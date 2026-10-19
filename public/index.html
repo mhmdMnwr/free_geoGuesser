@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LAN-Guessr | Multiplayer Geography Battle</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            darkbg: '#070a12',
+            darkcard: '#0f172a',
+            accent: '#3b82f6',
+            emeraldacc: '#10b981',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-darkbg text-slate-100 font-sans antialiased overflow-hidden select-none min-h-screen">
+
+  <!-- Confetti Canvas Layer -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- QR CODE MODAL -->
+  <div id="modal-qr" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative">
+      <button id="btn-close-qr" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl font-bold w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">✕</button>
+      <h3 class="text-lg font-black text-white mb-1">Scan to Join Game</h3>
+      <p class="text-xs text-slate-400 mb-4">Point phone camera at this QR code on same Wi-Fi</p>
+      <div class="bg-white p-3 rounded-2xl inline-block shadow-inner mb-4">
+        <img id="qr-code-img" src="" alt="LAN Join QR Code" class="w-48 h-48 mx-auto" />
+      </div>
+      <div class="font-mono text-xs font-bold text-emerald-400 bg-slate-950 p-2.5 rounded-xl border border-slate-800 select-all" id="qr-modal-url">
+        http://...
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 1A: USERNAME REGISTRATION -->
+  <div id="view-username" class="view-container fixed inset-0 z-40 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 text-center relative overflow-hidden">
+      <!-- Ambient Glow Behind Card -->
+      <div class="absolute -top-16 -left-16 w-36 h-36 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -right-16 w-36 h-36 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600/20 text-blue-400 mb-4 border border-blue-500/30 shadow-lg shadow-blue-500/10">
+        <span class="text-3xl">🌍</span>
+      </div>
+
+      <h2 class="text-2xl sm:text-3xl font-black tracking-wide text-white mb-1">LAN-GUESSR</h2>
+      <p class="text-xs sm:text-sm text-slate-400 mb-6">Zero-Cost Local Network Geography Battle</p>
+
+      <!-- Detected IP Badge -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-xl py-2 px-3.5 mb-6 flex items-center justify-center gap-2 shadow-inner">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Your Detected IP:</span>
+        <span id="detected-ip-badge" class="font-mono text-sm font-bold text-emerald-400">Loading...</span>
+      </div>
+
+      <!-- Username Input Form -->
+      <form id="form-username" class="space-y-4" onsubmit="return false;">
+        <div class="text-left">
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="input-username" class="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              Player Name
+            </label>
+            <button
+              type="button"
+              id="btn-random-name"
+              class="text-[11px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+            >
+              <span>🎲 Roll Random</span>
+            </button>
+          </div>
+          <input
+            type="text"
+            id="input-username"
+            maxlength="18"
+            placeholder="e.g. AtlasFox, Navigator, GeoKing"
+            class="w-full px-4 py-3.5 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-semibold tracking-wide text-sm"
+            required
+            autocomplete="off"
+          />
+          <p class="text-[11px] text-slate-400 mt-1">2 to 18 characters. Tied permanently to your LAN IP.</p>
+        </div>
+
+        <button
+          type="submit"
+          id="btn-save-username"
+          class="w-full py-4 px-6 rounded-xl font-black text-sm tracking-wider uppercase text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
+        >
+          <span>Enter Game Lobby</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- VIEW 1B: LOBBY SCREEN -->
+  <div id="view-lobby" class="view-container fixed inset-0 z-30 flex flex-col bg-slate-950 overflow-y-auto hidden">
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/70 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-blue-500/20">
+          🌍
+        </div>
+        <div>
+          <h1 class="text-lg font-black tracking-wider text-white">LAN-GUESSR</h1>
+          <p class="text-xs text-slate-400">10-Round Real-Time Multiplayer</p>
+        </div>
+      </div>
+
+      <!-- Profile & Sound Controls -->
+      <div class="flex items-center gap-3">
+        <button
+          id="btn-toggle-sound"
+          title="Toggle Sound Effects"
+          class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center justify-center transition-colors text-base"
+        >
+          🔊
+        </button>
+        <div class="text-right hidden sm:block">
+          <div class="text-[10px] uppercase font-bold text-slate-400">Player</div>
+          <div id="lobby-my-name" class="font-bold text-emerald-400 text-sm">--</div>
+        </div>
+        <button
+          id="btn-change-username"
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+        >
+          Rename
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6 justify-center">
+      <!-- LAN Share Banner -->
+      <div class="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border border-blue-800/50 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
+        <div class="space-y-1.5 text-center sm:text-left">
+          <div class="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span>Invite Friends on your Wi-Fi</span>
+          </div>
+          <p class="text-xs text-slate-300">Open on phones, tablets, or laptops on the same network:</p>
+          <div class="font-mono text-base font-bold text-emerald-400 bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-1.5 inline-block select-all" id="lan-join-url">
+            http://...
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="btn-show-qr"
+            class="px-3.5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-600 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-md"
+          >
+            <span>📱 QR Code</span>
+          </button>
+          <button
+            id="btn-copy-link"
+            class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-600/30 uppercase tracking-wider"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+            <span id="btn-copy-text">Copy Link</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Player List Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
+          <div class="flex items-center gap-2.5">
+            <h3 class="font-black text-lg text-white">Connected Players</h3>
+            <span id="player-count-badge" class="px-3 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              0 Players
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>IP Authentication Active</span>
+          </div>
+        </div>
+
+        <!-- Players Grid -->
+        <div id="lobby-players-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[140px] mb-6">
+          <!-- Dynamically populated player cards -->
+        </div>
+
+        <!-- Rules Briefing Badges -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-950/70 rounded-2xl border border-slate-800/80 text-xs text-slate-400 mb-6">
+          <div class="flex items-start gap-2.5">
+            <span class="text-blue-400 text-lg">🏁</span>
+            <div><strong class="text-slate-200 block text-xs">10 Global Rounds</strong> 50+ curated verified Street View locations worldwide.</div>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <span class="text-amber-400 text-lg">⚡</span>
+            <div><strong class="text-slate-200 block text-xs">20s Dynamic Timer</strong> First guess triggers urgent 20-second countdown!</div>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <span class="text-red-400 text-lg">🔒</span>
+            <div><strong class="text-slate-200 block text-xs">Mid-Game Lockout</strong> No new IPs can enter once the game begins.</div>
+          </div>
+        </div>
+
+        <!-- Action: Start Game Button -->
+        <button
+          id="btn-start-game"
+          class="w-full py-4 sm:py-5 px-8 rounded-2xl font-black text-lg sm:text-xl text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 active:scale-[0.99] transition-all shadow-2xl shadow-blue-600/30 flex items-center justify-center gap-3 uppercase tracking-wider"
+        >
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+          </svg>
+          <span>Start 10-Round Match</span>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- VIEW 2: ACCESS DENIED / MATCH LOCKED SCREEN -->
+  <div id="view-locked" class="view-container fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4 hidden">
+    <div class="bg-slate-900 border border-red-500/30 rounded-3xl max-w-lg w-full p-8 text-center shadow-2xl relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-40 h-40 bg-red-500/10 rounded-full blur-2xl"></div>
+
+      <div class="w-16 h-16 rounded-2xl bg-red-500/20 text-red-400 border border-red-500/40 flex items-center justify-center mx-auto mb-5 text-3xl shadow-lg shadow-red-500/20">
+        🔒
+      </div>
+
+      <h2 class="text-2xl font-black text-white mb-2">Match in Progress</h2>
+      <p id="locked-reason-text" class="text-sm text-slate-300 mb-6 leading-relaxed">
+        A 10-round game is currently active on this local network.
+        To maintain competitive integrity, new IP addresses cannot enter until the match finishes and returns to the lobby.
+      </p>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 mb-6 space-y-2">
+        <div class="flex justify-between">
+          <span class="text-slate-500">Your LAN IP:</span>
+          <span id="locked-user-ip" class="font-mono text-slate-200">Checking...</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Access Status:</span>
+          <span class="text-amber-400 font-semibold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            <span>Auto-unlocking when lobby opens</span>
+          </span>
+        </div>
+      </div>
+
+      <button
+        onclick="window.location.reload();"
+        class="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition-all flex items-center justify-center gap-2"
+      >
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span>Refresh Status</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- VIEW 3: ACTIVE ROUND SCREEN (ROUND_ACTIVE & ROUND_COUNTDOWN) -->
+  <div id="view-game" class="view-container fixed inset-0 z-20 overflow-hidden hidden">
+    <!-- Street View 100vw x 100vh iframe -->
+    <div class="relative w-full h-full">
+      <iframe
+        id="streetview-frame"
+        class="w-full h-full border-0 absolute inset-0 z-0 bg-slate-950"
+        src="about:blank"
+        allowfullscreen
+        loading="eager"
+      ></iframe>
+
+      <!-- Crucial Anti-Spoiler Mask (Top-Left Corner HUD) -->
+      <!-- Spec: width: 340px; height: 95px; background: #0f172a; covers Google's embedded address text card -->
+      <div
+        id="anti-spoiler-hud"
+        class="fixed top-0 left-0 z-30 w-[340px] h-[95px] bg-[#0f172a] shadow-2xl border-b border-r border-slate-700/80 px-4 py-2 flex flex-col justify-between pointer-events-auto"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">🌍</span>
+            <span class="text-xs font-black tracking-wider text-white uppercase">LAN-GUESSR</span>
+          </div>
+
+          <!-- Round Counter Badge with mini dot progress -->
+          <div class="flex items-center gap-2">
+            <div class="flex gap-1" id="hud-round-dots">
+              <!-- 10 dots dynamically highlighted -->
+            </div>
+            <div class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-bold font-mono">
+              R<span id="hud-round-current">1</span>/<span id="hud-round-total">10</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-800">
+          <!-- Guessed count badge with chip avatar display -->
+          <div class="flex items-center gap-1.5 text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Guesses:</span>
+            <span id="hud-guessed-status" class="font-bold text-amber-400 font-mono">0 / 0</span>
+          </div>
+
+          <!-- Player total score & Sound toggle -->
+          <div class="flex items-center gap-2">
+            <div class="text-slate-400">
+              <span id="hud-my-score" class="font-bold text-emerald-400 font-mono">0</span> pts
+            </div>
+            <button
+              id="hud-btn-sound"
+              title="Toggle Audio"
+              class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-colors"
+            >
+              🔊
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom-Left Street View Shield -->
+      <div id="streetview-bottom-shield">
+        <span>🛡️</span>
+        <span>LAN-GUESSR TACTICAL</span>
+      </div>
+
+      <!-- Top-Center Dynamic Timer Banner -->
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-300">
+        <div
+          id="timer-banner"
+          class="py-2.5 px-6 rounded-full font-bold text-sm tracking-wide shadow-2xl backdrop-blur-md border border-slate-700 bg-slate-900/95 text-slate-200 flex items-center gap-3 transition-all"
+        >
+          <span id="timer-icon" class="text-lg">⏳</span>
+          <span id="timer-text">No Time Limit — Waiting for first guess...</span>
+        </div>
+      </div>
+
+      <!-- Floating Expandable Guessing Map (Bottom-Right) -->
+      <div
+        id="guess-map-container"
+        class="fixed bottom-4 right-4 z-30 transition-all duration-300 rounded-3xl shadow-2xl border border-slate-700/80 bg-slate-900/95 backdrop-blur-md flex flex-col overflow-hidden pointer-events-auto"
+      >
+        <!-- Map Control Header -->
+        <div class="px-3.5 py-2 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-slate-300 font-semibold">
+            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span id="map-header-status">Click map to place pin</span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button
+              id="btn-center-map"
+              title="Reset World View"
+              class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] uppercase font-bold transition-colors"
+            >
+              Reset
+            </button>
+            <button
+              id="btn-toggle-map-size"
+              title="Expand / Shrink Map (Hotkey: M)"
+              class="px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] uppercase font-black transition-colors"
+            >
+              Expand
+            </button>
+          </div>
+        </div>
+
+        <!-- Leaflet Map Container -->
+        <div id="guess-map" class="relative z-0"></div>
+
+        <!-- Map Footer / Lock In Guess Button -->
+        <div class="p-3 bg-slate-900 border-t border-slate-800 flex flex-col gap-2">
+          <button
+            id="btn-lock-guess"
+            disabled
+            class="w-full py-3 px-4 rounded-xl font-black text-sm tracking-wider text-white bg-slate-700 cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 uppercase shadow-lg"
+          >
+            <span>Lock in Guess</span>
+            <span class="kbd-badge ml-1 hidden sm:inline">SPACE</span>
+          </button>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono px-1">
+            <span id="pin-coords-text">No pin placed</span>
+            <span class="text-slate-500 hidden sm:inline">Press M to toggle map</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 4: POST-ROUND LEADERBOARD & MAP BREAKDOWN (ROUND_RESULTS) -->
+  <div id="view-results" class="view-container fixed inset-0 z-30 bg-slate-950 flex flex-col overflow-hidden hidden">
+    <!-- Results Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400">
+          <span>Round <span id="results-round-num">1</span> Breakdown</span>
+          <span class="text-slate-600">•</span>
+          <span class="text-emerald-400 flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            Target Revealed
+          </span>
+        </div>
+        <h2 id="results-target-title" class="text-xl sm:text-2xl font-black text-white">
+          Location Name Loading...
+        </h2>
+      </div>
+
+      <!-- Action & Auto-advance Bar -->
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <div class="text-[10px] text-slate-400 uppercase font-semibold">Auto-advance</div>
+          <div id="auto-advance-timer" class="text-xs font-mono font-bold text-amber-400">15s</div>
+        </div>
+        <button
+          id="btn-next-round"
+          class="py-3 px-6 rounded-xl font-black text-sm tracking-wider text-white bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 uppercase"
+        >
+          <span id="btn-next-round-text">Next Round (Round 2)</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Results Content: Split Map + Leaderboard -->
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+      <!-- Left/Top: Results Map (Leaflet) -->
+      <div class="lg:col-span-7 xl:col-span-8 relative h-[380px] lg:h-full border-b lg:border-b-0 lg:border-r border-slate-800">
+        <div id="results-map" class="w-full h-full bg-slate-900"></div>
+
+        <!-- Legend Overlay -->
+        <div class="absolute bottom-4 left-4 z-[500] bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 text-xs flex flex-col gap-1.5 shadow-2xl">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 border border-white"></span>
+            <span class="font-bold text-white">Target Location</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-blue-500 border border-white"></span>
+            <span class="text-slate-300">Player Guesses</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-4 h-0 border-t-2 border-dashed border-amber-400"></span>
+            <span class="text-slate-300">Distance Line</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right/Bottom: Live Cumulative Leaderboard Table -->
+      <div class="lg:col-span-5 xl:col-span-4 flex flex-col bg-slate-900/60 overflow-y-auto p-4 sm:p-6">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+          <h3 class="font-black text-lg text-white">Cumulative Leaderboard</h3>
+          <span class="text-xs text-slate-400">Click row to focus map</span>
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div class="flex-1 overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                <th class="pb-2 font-bold w-12">Rank</th>
+                <th class="pb-2 font-bold">Player</th>
+                <th class="pb-2 font-bold text-right">Distance</th>
+                <th class="pb-2 font-bold text-right">Round</th>
+                <th class="pb-2 font-bold text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody id="results-table-body" class="divide-y divide-slate-800/60">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 5: FINAL PODIUM & GAME OVER (GAME_OVER) -->
+  <div id="view-gameover" class="view-container fixed inset-0 z-40 bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-8 overflow-y-auto hidden">
+    <div class="max-w-3xl w-full flex flex-col items-center text-center">
+      <!-- Trophy Icon -->
+      <div class="w-20 h-20 rounded-3xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-4xl shadow-2xl shadow-amber-500/20 mb-3 animate-bounce">
+        🏆
+      </div>
+
+      <h1 class="text-3xl sm:text-4xl font-black text-white tracking-wide mb-1">
+        TOURNAMENT COMPLETED!
+      </h1>
+      <p class="text-sm text-slate-400 mb-8">
+        10 World Rounds Finished • LAN Champions Crowned
+      </p>
+
+      <!-- 3D Olympic-Style Podium Top 3 Cards -->
+      <div id="podium-container" class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mb-8 items-end">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- Full Standings Table -->
+      <div class="w-full bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 mb-8 shadow-2xl text-left">
+        <h3 class="font-bold text-sm uppercase tracking-wider text-slate-400 mb-4">Complete Tournament Standings</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-[11px] text-slate-400 border-b border-slate-800 uppercase">
+                <th class="pb-2 font-semibold">Rank</th>
+                <th class="pb-2 font-semibold">Player</th>
+                <th class="pb-2 font-semibold">LAN IP</th>
+                <th class="pb-2 font-semibold text-right">Total Points</th>
+              </tr>
+            </thead>
+            <tbody id="gameover-table-body" class="divide-y divide-slate-800/60">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Action: Play Again / Return to Lobby -->
+      <button
+        id="btn-reset-lobby"
+        class="py-4 px-10 rounded-2xl font-black text-lg text-white bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 active:scale-95 transition-all shadow-xl shadow-blue-600/30 uppercase tracking-wider flex items-center gap-3"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span>Play Again (Return to Lobby)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Socket.IO Client Script -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Main Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

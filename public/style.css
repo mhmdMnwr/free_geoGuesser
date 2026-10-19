@@ -1,0 +1,331 @@
+/* ============================================================
+   LAN-GUESSR AAA QUALITY DESIGN & STYLESHEET
+   ============================================================ */
+
+/* CSS Reset & Dark Mode Canvas */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #070a12;
+  color: #f1f5f9;
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   ANTI-SPOILER HUD & STREET VIEW SHIELDS
+   ============================================================ */
+
+/* Top-Left Anti-Spoiler HUD Mask:
+   Strictly covers Google Street View embed's informational card (address, city, country)
+   Specified dimensions: width: 340px; height: 95px; background: #0f172a; */
+#anti-spoiler-hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 340px;
+  height: 95px;
+  z-index: 30;
+  background: #0f172a;
+  border-bottom: 2px solid #1e293b;
+  border-right: 2px solid #1e293b;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.9), 0 0 20px rgba(15, 23, 42, 0.8);
+  pointer-events: auto;
+}
+
+/* Bottom-Left Shield: masks Google Street View links / "View on Google Maps" */
+#streetview-bottom-shield {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 220px;
+  height: 40px;
+  background: #0f172a;
+  border-top-right-radius: 12px;
+  border-top: 1px solid #1e293b;
+  border-right: 1px solid #1e293b;
+  z-index: 25;
+  pointer-events: auto;
+  box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Screen Urgent Vignette Pulse on Low Time (under 5s) */
+.urgent-vignette {
+  box-shadow: inset 0 0 60px rgba(239, 68, 68, 0.55), inset 0 0 20px rgba(239, 68, 68, 0.8) !important;
+  animation: vignette-pulse 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes vignette-pulse {
+  from { box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.4); }
+  to { box-shadow: inset 0 0 80px rgba(239, 68, 68, 0.7); }
+}
+
+/* ============================================================
+   DYNAMIC FLOATING GUESSING MAP
+   ============================================================ */
+
+#guess-map-container {
+  width: 340px;
+  max-width: calc(100vw - 2rem);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s ease;
+}
+
+#guess-map {
+  width: 100%;
+  height: 230px;
+  background: #111827;
+  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Expanded State */
+#guess-map-container.expanded {
+  width: 600px;
+  max-width: calc(100vw - 2rem);
+}
+
+#guess-map-container.expanded #guess-map {
+  height: 440px;
+  max-height: calc(100vh - 190px);
+}
+
+/* Fullscreen Map State */
+#guess-map-container.fullscreen {
+  width: calc(100vw - 2rem) !important;
+  max-width: 1200px !important;
+  position: fixed !important;
+  bottom: 1rem !important;
+  right: 1rem !important;
+  left: 1rem !important;
+  margin: 0 auto;
+}
+
+#guess-map-container.fullscreen #guess-map {
+  height: calc(100vh - 210px) !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 640px) {
+  #guess-map-container {
+    width: 290px;
+  }
+  #guess-map {
+    height: 195px;
+  }
+  #guess-map-container.expanded {
+    width: calc(100vw - 1.5rem);
+  }
+  #guess-map-container.expanded #guess-map {
+    height: 360px;
+  }
+}
+
+/* ============================================================
+   TIMER BANNER & ANIMATIONS
+   ============================================================ */
+
+@keyframes timer-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 35px rgba(239, 68, 68, 0.85);
+  }
+}
+
+.timer-countdown-active {
+  animation: timer-pulse 0.9s infinite ease-in-out;
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.95), rgba(153, 27, 27, 0.98)) !important;
+  border-color: #f87171 !important;
+  color: #ffffff !important;
+}
+
+/* ============================================================
+   CUSTOM LEAFLET MARKERS
+   ============================================================ */
+
+/* Target Pin (Pulsing Star Flag) */
+.marker-target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.marker-target-inner {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.8), 0 0 10px rgba(255, 255, 255, 0.5);
+  position: relative;
+}
+.marker-target-inner::after {
+  content: '';
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(16, 185, 129, 0.6);
+  animation: radar-ping 1.8s infinite cubic-bezier(0, 0, 0.2, 1);
+}
+
+@keyframes radar-ping {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.marker-target-inner span {
+  transform: rotate(45deg);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* Interactive Player Guess Pin */
+.marker-guess {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.marker-guess:hover {
+  transform: scale(1.18);
+  z-index: 1000 !important;
+}
+.marker-guess-pin {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: white;
+  font-weight: 800;
+}
+.marker-guess-label {
+  background: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  white-space: nowrap;
+  margin-top: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* Interactive Active Pin */
+.marker-active-pin {
+  width: 26px;
+  height: 26px;
+  background: #3b82f6;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.9), 0 0 0 4px rgba(59, 130, 246, 0.3);
+  animation: pin-bob 1.6s infinite ease-in-out;
+}
+
+@keyframes pin-bob {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Leaflet Popups */
+.leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8) !important;
+  padding: 4px !important;
+}
+.leaflet-popup-tip {
+  background: #0f172a !important;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.9);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 1);
+}
+
+/* Confetti Canvas Overlay */
+#confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* Keyboard Shortcut Badge */
+.kbd-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(71, 85, 105, 0.7);
+  box-shadow: 0 2px 0 rgba(71, 85, 105, 0.6);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
