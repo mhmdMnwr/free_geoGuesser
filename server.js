@@ -159,9 +159,9 @@ function shuffleArray(arr) {
 }
 
 function checkAllGuessed() {
-  const playerList = Object.values(gameState.players);
-  if (playerList.length === 0) return;
-  const allGuessed = playerList.every((p) => p.hasGuessed);
+  const activePlayers = Object.values(gameState.players).filter((p) => p.connected && p.inGame !== false);
+  if (activePlayers.length === 0) return;
+  const allGuessed = activePlayers.every((p) => p.hasGuessed);
   if (allGuessed) {
     console.log('[LAN-Guessr] All active players have guessed! Ending round immediately.');
     if (gameState.countdownInterval) {
@@ -194,6 +194,8 @@ function startRound(roundNumber) {
     p.lastRoundDistanceKm = null;
   }
 
+  const activePlayers = Object.values(gameState.players).filter((p) => p.connected && p.inGame !== false);
+
   console.log(`[LAN-Guessr] Starting Round ${roundNumber}/${gameState.totalRounds}: ${gameState.roundTarget.label} (${gameState.roundTarget.region || 'global'})`);
 
   // Crucial: emit panoramaCoords only, never leak roundTarget.label during round
@@ -205,7 +207,7 @@ function startRound(roundNumber) {
       lng: gameState.roundTarget.lng,
     },
     guessedCount: 0,
-    totalPlayers: Object.keys(gameState.players).length,
+    totalPlayers: activePlayers.length,
     hostIp: gameState.hostIp,
   });
 }
@@ -238,8 +240,10 @@ function endRound() {
     player.totalScore += player.lastRoundScore;
   }
 
-  // Build sorted results
-  const sortedPlayers = Object.values(gameState.players).sort((a, b) => b.totalScore - a.totalScore);
+  // Build sorted results (prioritizing players actively in the round)
+  const sortedPlayers = Object.values(gameState.players)
+    .filter((p) => p.inGame !== false)
+    .sort((a, b) => b.totalScore - a.totalScore);
   const results = sortedPlayers.map((p) => ({
     username: p.username,
     ip: p.ip,
@@ -420,6 +424,7 @@ io.on('connection', (socket) => {
         hasGuessed: false,
         lastRoundScore: 0,
         lastRoundDistanceKm: null,
+        inGame: (gameState.status === 'LOBBY'),
       };
 
       if (!gameState.hostIp || isFirstPlayer) {
@@ -487,10 +492,15 @@ io.on('connection', (socket) => {
       return;
     }
 
+    player.inGame = true;
+    player.connected = true;
+    player.socketId = socket.id;
+
     console.log(`[LAN-Guessr] Player ${player.username} (${ip}) joining live game in status ${gameState.status}`);
 
-    const guessedCount = Object.values(gameState.players).filter((p) => p.hasGuessed).length;
-    const totalPlayers = Object.keys(gameState.players).length;
+    const inGamePlayers = Object.values(gameState.players).filter((p) => p.connected && p.inGame !== false);
+    const guessedCount = inGamePlayers.filter((p) => p.hasGuessed).length;
+    const totalPlayers = inGamePlayers.length;
 
     if (gameState.status === 'ROUND_ACTIVE' || gameState.status === 'ROUND_COUNTDOWN') {
       socket.emit('round_started', {
@@ -545,7 +555,7 @@ io.on('connection', (socket) => {
     const shuffled = shuffleArray(pool);
     gameState.selectedLocations = shuffled.slice(0, gameState.totalRounds);
 
-    // Reset scores
+    // Reset scores & activate all registered players
     for (const p of Object.values(gameState.players)) {
       p.totalScore = 0;
       p.lastRoundScore = 0;
@@ -553,6 +563,7 @@ io.on('connection', (socket) => {
       p.hasGuessed = false;
       p.lockedGuess = null;
       p.currentPin = null;
+      p.inGame = true;
     }
 
     startRound(1);
@@ -587,6 +598,7 @@ io.on('connection', (socket) => {
       p.hasGuessed = false;
       p.lastRoundScore = 0;
       p.lastRoundDistanceKm = null;
+      p.inGame = true;
     }
 
     io.emit('game_stopped', {
@@ -599,6 +611,8 @@ io.on('connection', (socket) => {
       players: getLobbyPlayers(),
       hostIp: gameState.hostIp,
       selectedRegion: gameState.selectedRegion,
+      status: 'LOBBY',
+      currentRound: 0,
     });
   });
 
@@ -609,10 +623,60 @@ io.on('connection', (socket) => {
     console.log(`[LAN-Guessr] Player ${username} (${ip}) chose to leave match to lobby.`);
 
     const wasHost = (ip === gameState.hostIp);
-    delete gameState.players[ip];
+    const otherIps = Object.keys(gameState.players).filter((pIp) => pIp !== ip);
 
-    if (wasHost) {
-      gameState.hostIp = Object.keys(gameState.players)[0] || null;
+    if (wasHost || otherIps.length === 0) {
+      // Host or solo player returned to lobby: reset match state cleanly back to LOBBY
+      if (gameState.countdownInterval) {
+        clearInterval(gameState.countdownInterval);
+        gameState.countdownInterval = null;
+      }
+      gameState.status = 'LOBBY';
+      gameState.currentRound = 0;
+      gameState.selectedLocations = [];
+      gameState.roundTarget = null;
+      gameState.countdownSeconds = null;
+      gameState.firstGuesserName = null;
+      gameState.lastRoundResults = null;
+      gameState.lastGameOver = null;
+
+      for (const p of Object.values(gameState.players)) {
+        p.totalScore = 0;
+        p.currentPin = null;
+        p.lockedGuess = null;
+        p.hasGuessed = false;
+        p.lastRoundScore = 0;
+        p.lastRoundDistanceKm = null;
+        p.inGame = true;
+      }
+
+      io.emit('game_stopped', {
+        message: wasHost ? 'Host returned match to Lobby.' : 'Returned to Lobby.',
+        players: getLobbyPlayers(),
+        hostIp: gameState.hostIp,
+        selectedRegion: gameState.selectedRegion,
+      });
+
+      io.emit('lobby_update', {
+        players: getLobbyPlayers(),
+        hostIp: gameState.hostIp,
+        selectedRegion: gameState.selectedRegion,
+      });
+
+      io.emit('return_to_lobby', {
+        players: getLobbyPlayers(),
+        hostIp: gameState.hostIp,
+        selectedRegion: gameState.selectedRegion,
+        status: gameState.status,
+        currentRound: gameState.currentRound,
+      });
+      return;
+    }
+
+    // Multiplayer: Non-host player returns to lobby while match continues for others
+    if (player) {
+      player.inGame = false;
+      player.hasGuessed = true;
     }
 
     socket.emit('return_to_lobby', {
@@ -623,10 +687,12 @@ io.on('connection', (socket) => {
       currentRound: gameState.currentRound,
     });
 
+    const activeInGame = Object.values(gameState.players).filter((p) => p.connected && p.inGame !== false);
+
     io.emit('player_left', {
       username,
       ip,
-      remainingCount: Object.keys(gameState.players).length,
+      remainingCount: activeInGame.length,
       hostIp: gameState.hostIp,
     });
 
@@ -754,7 +820,17 @@ io.on('connection', (socket) => {
 
   // Event: reset_to_lobby (Reset back to lobby after game over)
   socket.on('reset_to_lobby', () => {
-    if (gameState.status !== 'GAME_OVER' && gameState.status !== 'ROUND_RESULTS') return;
+    if (gameState.status === 'LOBBY') {
+      // Already in LOBBY state: ensure the requesting socket returns to the lobby view
+      socket.emit('return_to_lobby', {
+        players: getLobbyPlayers(),
+        hostIp: gameState.hostIp,
+        selectedRegion: gameState.selectedRegion,
+        status: 'LOBBY',
+        currentRound: 0,
+      });
+      return;
+    }
 
     console.log('[LAN-Guessr] Resetting match to LOBBY. New players can now join.');
     if (gameState.countdownInterval) {
@@ -778,6 +854,7 @@ io.on('connection', (socket) => {
       p.hasGuessed = false;
       p.lastRoundScore = 0;
       p.lastRoundDistanceKm = null;
+      p.inGame = true;
     }
 
     io.emit('lobby_update', {
@@ -789,6 +866,8 @@ io.on('connection', (socket) => {
       players: getLobbyPlayers(),
       hostIp: gameState.hostIp,
       selectedRegion: gameState.selectedRegion,
+      status: 'LOBBY',
+      currentRound: 0,
     });
   });
 
@@ -804,6 +883,22 @@ io.on('connection', (socket) => {
 
       if (wasHost) {
         gameState.hostIp = Object.keys(gameState.players)[0] || null;
+      }
+
+      if (Object.keys(gameState.players).length === 0) {
+        if (gameState.countdownInterval) {
+          clearInterval(gameState.countdownInterval);
+          gameState.countdownInterval = null;
+        }
+        gameState.status = 'LOBBY';
+        gameState.currentRound = 0;
+        gameState.selectedLocations = [];
+        gameState.roundTarget = null;
+        gameState.countdownSeconds = null;
+        gameState.firstGuesserName = null;
+        gameState.lastRoundResults = null;
+        gameState.lastGameOver = null;
+        gameState.hostIp = null;
       }
 
       console.log(`[LAN-Guessr] Deleted inactive player ${username} (${ip}). Remaining players: ${Object.keys(gameState.players).length}`);

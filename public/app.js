@@ -430,8 +430,10 @@ function initGuessMap() {
 
     // Enable lock guess button
     const btnLock = document.getElementById('btn-lock-guess');
-    btnLock.disabled = false;
-    btnLock.className = 'w-full py-3 px-4 rounded-xl font-black text-sm tracking-wider text-white btn-lock-tactical cursor-pointer flex items-center justify-center gap-2 uppercase shadow-xl';
+    if (btnLock) {
+      btnLock.disabled = false;
+      btnLock.className = 'btn-3d w-full py-3.5 px-4 font-black text-sm tracking-wider text-white btn-lock-tactical cursor-pointer flex items-center justify-center gap-2 uppercase shadow-xl';
+    }
 
     document.getElementById('pin-coords-text').textContent = `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
 
@@ -537,12 +539,20 @@ document.getElementById('btn-toggle-map-theme')?.addEventListener('click', () =>
 });
 
 // QR Modal Controls
+function toggleQrModal(show) {
+  const modal = document.getElementById('modal-qr') || document.getElementById('qr-modal');
+  if (modal) {
+    if (show) modal.classList.remove('hidden');
+    else modal.classList.add('hidden');
+  }
+}
+
 document.getElementById('btn-show-qr')?.addEventListener('click', () => {
   Sound.click();
-  document.getElementById('modal-qr')?.classList.remove('hidden');
+  toggleQrModal(true);
 });
 document.getElementById('btn-close-qr')?.addEventListener('click', () => {
-  document.getElementById('modal-qr')?.classList.add('hidden');
+  toggleQrModal(false);
 });
 
 // Copy Join URL
@@ -600,29 +610,65 @@ document.getElementById('lobby-region-select')?.addEventListener('change', (e) =
 // Join In-Progress Match Button in Lobby
 document.getElementById('btn-join-in-progress')?.addEventListener('click', () => {
   Sound.click();
+  state.userLeftToLobby = false;
   socket.emit('join_game');
 });
 
 // Host Stop Game Buttons (HUD & Results)
 document.getElementById('hud-btn-stop-game')?.addEventListener('click', () => {
   Sound.click();
-  if (confirm('Stop the match and return all players to the lobby?')) {
-    socket.emit('stop_game');
-  }
+  socket.emit('stop_game');
+  switchView('view-lobby');
+  fetchLanInfo();
 });
 document.getElementById('results-btn-stop-game')?.addEventListener('click', () => {
   Sound.click();
-  if (confirm('Stop the match and return all players to the lobby?')) {
-    socket.emit('stop_game');
+  if (state.autoAdvanceInterval) {
+    clearInterval(state.autoAdvanceInterval);
+    state.autoAdvanceInterval = null;
   }
+  socket.emit('stop_game');
+  switchView('view-lobby');
+  fetchLanInfo();
 });
 
-// Player Leave to Lobby Button
-document.getElementById('hud-btn-leave-game')?.addEventListener('click', () => {
+// Player & Host Return to Lobby Button in Round Results
+document.getElementById('results-btn-leave-game')?.addEventListener('click', () => {
   Sound.click();
-  if (confirm('Leave match and return to the lobby?')) {
+  if (state.autoAdvanceInterval) {
+    clearInterval(state.autoAdvanceInterval);
+    state.autoAdvanceInterval = null;
+  }
+  if (state.isHost) {
+    socket.emit('stop_game');
+  } else {
+    state.userLeftToLobby = true;
     socket.emit('leave_game');
   }
+  switchView('view-lobby');
+  fetchLanInfo();
+});
+
+// Player Leave to Lobby Button (Game HUD)
+document.getElementById('hud-btn-leave-game')?.addEventListener('click', () => {
+  Sound.click();
+  if (state.isHost) {
+    socket.emit('stop_game');
+  } else {
+    state.userLeftToLobby = true;
+    socket.emit('leave_game');
+  }
+  switchView('view-lobby');
+  fetchLanInfo();
+});
+
+// Return to Lobby from Locked Screen
+document.getElementById('btn-locked-go-lobby')?.addEventListener('click', () => {
+  Sound.click();
+  state.userLeftToLobby = false;
+  socket.emit('reset_to_lobby');
+  switchView('view-lobby');
+  fetchLanInfo();
 });
 
 // Start Game Button in Lobby
@@ -632,6 +678,7 @@ document.getElementById('btn-start-game')?.addEventListener('click', () => {
     return;
   }
   Sound.fanfare();
+  state.userLeftToLobby = false;
   socket.emit('start_game');
 });
 
@@ -675,12 +722,14 @@ function lockCurrentGuess() {
   Sound.lock();
 
   const btn = document.getElementById('btn-lock-guess');
-  btn.disabled = true;
-  btn.className = 'w-full py-3 px-4 rounded-xl font-black text-sm tracking-wider text-slate-300 bg-slate-800 cursor-not-allowed flex items-center justify-center gap-2 uppercase shadow-inner border border-slate-700/50';
-  btn.innerHTML = `
-    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping mr-1"></span>
-    <span>Guess Locked — Waiting for others...</span>
-  `;
+  if (btn) {
+    btn.disabled = true;
+    btn.className = 'btn-3d w-full py-3.5 px-4 font-black text-sm tracking-wider text-emerald-300 bg-slate-900 cursor-not-allowed flex items-center justify-center gap-2 uppercase shadow-inner border border-emerald-500/40';
+    btn.innerHTML = `
+      <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping mr-1"></span>
+      <span>Guess Locked — Waiting for others...</span>
+    `;
+  }
 
   socket.emit('lock_guess', {
     lat: state.currentPin.lat,
@@ -703,7 +752,7 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     toggleMapSize();
   } else if (e.code === 'Escape') {
-    document.getElementById('modal-qr')?.classList.add('hidden');
+    toggleQrModal(false);
   }
 });
 
@@ -720,7 +769,10 @@ document.getElementById('btn-next-round')?.addEventListener('click', () => {
 // Play Again Button in Game Over
 document.getElementById('btn-reset-lobby')?.addEventListener('click', () => {
   Sound.click();
+  state.userLeftToLobby = false;
   socket.emit('reset_to_lobby');
+  switchView('view-lobby');
+  fetchLanInfo();
 });
 
 // ============================================================
@@ -810,7 +862,7 @@ function renderRoundResults(data) {
         }
 
         return `
-          <tr class="cursor-pointer transition-all hover:bg-slate-800/60 ${isMe ? 'bg-cyan-950/30 font-semibold' : ''} ${isWinner ? 'bg-amber-950/20' : ''}" data-player-ip="${r.ip}">
+          <tr class="row-3d-hover cursor-pointer transition-all hover:bg-slate-800/60 ${isMe ? 'bg-cyan-950/30 font-semibold' : ''} ${isWinner ? 'bg-amber-950/20' : ''}" data-player-ip="${r.ip}">
             <td class="py-3 px-1">
               <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black ${
                 idx === 0 ? 'bg-amber-400 text-black shadow-md shadow-amber-400/30' : idx === 1 ? 'bg-slate-300 text-black' : idx === 2 ? 'bg-amber-700 text-white' : 'text-slate-400'
@@ -964,44 +1016,43 @@ function renderGameOver(data) {
   if (podiumContainer) {
     podiumContainer.innerHTML = `
       <!-- 2nd Place (Silver) -->
-      <div class="order-2 sm:order-1 tech-panel rounded-3xl p-5 flex flex-col items-center shadow-xl ${
-        !top2 ? 'opacity-30' : ''
-      }">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-300 to-slate-500 text-black flex items-center justify-center font-black text-xl mb-2 shadow-lg shadow-slate-400/20">
-          🥈 2
+      <div class="order-2 sm:order-1 podium-tier ${!top2 ? 'opacity-30' : ''}">
+        <div class="tech-panel podium-silver rounded-3xl p-5 flex flex-col items-center w-full mb-2">
+          <div class="medal-3d medal-silver mb-2">🥈</div>
+          <div class="font-black text-white text-base">${top2 ? top2.username : '---'}</div>
+          <div class="text-[11px] text-slate-400 font-mono mb-2">${top2 ? top2.ip : ''}</div>
+          <div class="font-black text-emerald-400 text-lg font-mono">
+            ${top2 ? `${top2.totalScore.toLocaleString()} pts` : ''}
+          </div>
         </div>
-        <div class="font-bold text-white text-base">${top2 ? top2.username : '---'}</div>
-        <div class="text-xs text-slate-400 font-mono mb-2">${top2 ? top2.ip : ''}</div>
-        <div class="font-black text-emerald-400 text-lg font-mono">
-          ${top2 ? `${top2.totalScore.toLocaleString()} pts` : ''}
-        </div>
+        <div class="podium-step-block podium-step-2">2</div>
       </div>
 
       <!-- 1st Place (Gold Champion) -->
-      <div class="order-1 sm:order-2 tech-panel border-amber-500 rounded-3xl p-6 sm:p-8 flex flex-col items-center shadow-2xl shadow-amber-500/25 transform sm:-translate-y-4 relative">
-        <div class="text-4xl mb-1 animate-bounce">👑</div>
-        <div class="w-18 h-18 p-3 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-black flex items-center justify-center font-black text-2xl mb-2 shadow-xl shadow-amber-500/50">
-          🥇 1
+      <div class="order-1 sm:order-2 podium-tier relative ${!top1 ? 'opacity-30' : ''}">
+        <div class="tech-panel podium-gold rounded-3xl p-6 sm:p-7 flex flex-col items-center w-full mb-2">
+          <div class="text-4xl mb-1 animate-bounce">👑</div>
+          <div class="medal-3d medal-gold mb-2">🥇</div>
+          <div class="font-black text-amber-300 text-xl sm:text-2xl">${top1 ? top1.username : '---'}</div>
+          <div class="text-xs text-slate-400 font-mono mb-2">${top1 ? top1.ip : ''}</div>
+          <div class="font-black text-amber-400 text-2xl sm:text-3xl font-mono">
+            ${top1 ? `${top1.totalScore.toLocaleString()} pts` : ''}
+          </div>
         </div>
-        <div class="font-black text-amber-300 text-xl sm:text-2xl">${top1 ? top1.username : '---'}</div>
-        <div class="text-xs text-slate-400 font-mono mb-2">${top1 ? top1.ip : ''}</div>
-        <div class="font-black text-amber-400 text-2xl sm:text-3xl font-mono">
-          ${top1 ? `${top1.totalScore.toLocaleString()} pts` : ''}
-        </div>
+        <div class="podium-step-block podium-step-1">1</div>
       </div>
 
       <!-- 3rd Place (Bronze) -->
-      <div class="order-3 tech-panel rounded-3xl p-5 flex flex-col items-center shadow-xl ${
-        !top3 ? 'opacity-30' : ''
-      }">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-700 to-amber-900 text-amber-200 flex items-center justify-center font-black text-xl mb-2 shadow-lg shadow-amber-800/20">
-          🥉 3
+      <div class="order-3 podium-tier ${!top3 ? 'opacity-30' : ''}">
+        <div class="tech-panel podium-bronze rounded-3xl p-5 flex flex-col items-center w-full mb-2">
+          <div class="medal-3d medal-bronze mb-2">🥉</div>
+          <div class="font-black text-white text-base">${top3 ? top3.username : '---'}</div>
+          <div class="text-[11px] text-slate-400 font-mono mb-2">${top3 ? top3.ip : ''}</div>
+          <div class="font-black text-emerald-400 text-lg font-mono">
+            ${top3 ? `${top3.totalScore.toLocaleString()} pts` : ''}
+          </div>
         </div>
-        <div class="font-bold text-white text-base">${top3 ? top3.username : '---'}</div>
-        <div class="text-xs text-slate-400 font-mono mb-2">${top3 ? top3.ip : ''}</div>
-        <div class="font-black text-emerald-400 text-lg font-mono">
-          ${top3 ? `${top3.totalScore.toLocaleString()} pts` : ''}
-        </div>
+        <div class="podium-step-block podium-step-3">3</div>
       </div>
     `;
   }
@@ -1011,9 +1062,14 @@ function renderGameOver(data) {
     tableBody.innerHTML = leaderboard
       .map((p, idx) => {
         const isMe = p.username === state.myUsername || p.ip === state.myIp;
+        let rankBadge = `#${idx + 1}`;
+        if (idx === 0) rankBadge = '🥇 #1';
+        else if (idx === 1) rankBadge = '🥈 #2';
+        else if (idx === 2) rankBadge = '🥉 #3';
+
         return `
-          <tr class="${isMe ? 'bg-cyan-950/30 font-semibold' : ''}">
-            <td class="py-3 px-3 font-bold text-slate-300">#${idx + 1}</td>
+          <tr class="${isMe ? 'bg-cyan-950/40 border-l-4 border-cyan-400 font-semibold' : ''} hover:bg-slate-900/60 transition-colors">
+            <td class="py-3 px-3 font-bold text-slate-300">${rankBadge}</td>
             <td class="py-3 px-3">
               <span class="font-bold text-white">${p.username}</span>
               ${isMe ? '<span class="text-[9px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-mono border border-cyan-500/30 ml-1.5">YOU</span>' : ''}
@@ -1102,6 +1158,7 @@ socket.on('region_updated', (data) => {
 socket.on('game_stopped', (data) => {
   Sound.pop();
   showToast(data.message || 'Host stopped the game. Returned to Lobby.', 'warning');
+  state.userLeftToLobby = false;
   if (state.autoAdvanceInterval) clearInterval(state.autoAdvanceInterval);
   state.autoAdvanceInterval = null;
   if (data.hostIp) {
@@ -1179,13 +1236,9 @@ socket.on('lobby_update', (data) => {
     .map((p) => {
       const isMe = p.username === state.myUsername || p.ip === state.myIp;
       return `
-        <div class="flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-          isMe
-            ? 'bg-cyan-950/40 border-cyan-500/50 shadow-lg shadow-cyan-500/10'
-            : 'bg-slate-950/80 border-slate-800'
-        }">
+        <div class="player-card-3d ${isMe ? 'is-me' : ''} flex items-center justify-between p-3.5 rounded-2xl transition-all">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${
+            <div class="avatar-3d w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${
               p.connected ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-slate-800 text-slate-500'
             }">
               ${p.username ? p.username.substring(0, 2).toUpperCase() : '??'}
@@ -1225,6 +1278,21 @@ socket.on('round_started', (data) => {
   }
   updateHostUI();
 
+  // If a brand new match starts (Round 1), reset userLeftToLobby so all players enter!
+  if (data.round === 1) {
+    state.userLeftToLobby = false;
+  }
+
+  // If the user explicitly returned to the lobby mid-game, remain in the lobby!
+  if (state.userLeftToLobby) {
+    updateLobbyGameStatus({
+      status: 'ROUND_ACTIVE',
+      currentRound: data.round,
+      totalRounds: state.totalRounds,
+    });
+    return;
+  }
+
   // Update HUD
   document.getElementById('hud-round-current').textContent = data.round;
   document.getElementById('hud-round-total').textContent = state.totalRounds;
@@ -1244,9 +1312,11 @@ socket.on('round_started', (data) => {
 
   // Reset lock guess button
   const btnLock = document.getElementById('btn-lock-guess');
-  btnLock.disabled = true;
-  btnLock.className = 'w-full py-3 px-4 rounded-xl font-black text-sm tracking-wider text-white bg-slate-800 cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 uppercase shadow-lg border border-slate-700/60';
-  btnLock.innerHTML = '<span>Lock in Guess</span><span class="kbd-badge ml-1 hidden sm:inline">SPACE</span>';
+  if (btnLock) {
+    btnLock.disabled = true;
+    btnLock.className = 'btn-3d w-full py-3.5 px-4 font-black text-sm tracking-wider text-slate-400 bg-slate-800/90 cursor-not-allowed flex items-center justify-center gap-2 uppercase border border-slate-700/60';
+    btnLock.innerHTML = '<span>Lock in Guess</span><span class="kbd-badge ml-1 hidden sm:inline">SPACE</span>';
+  }
 
   document.getElementById('pin-coords-text').textContent = 'No pin placed';
 
@@ -1360,15 +1430,17 @@ socket.on('rejoin_match', (data) => {
     }
 
     const btnLock = document.getElementById('btn-lock-guess');
-    if (data.hasGuessed && data.lockedGuess) {
-      state.currentPin = data.lockedGuess;
-      btnLock.disabled = true;
-      btnLock.className = 'w-full py-3 px-4 rounded-xl font-black text-sm tracking-wider text-slate-300 bg-slate-800 cursor-not-allowed flex items-center justify-center gap-2 uppercase shadow-inner border border-slate-700/50';
-      btnLock.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping mr-1"></span><span>Guess Locked — Waiting for others...</span>';
-    } else if (data.currentPin) {
-      state.currentPin = data.currentPin;
-      btnLock.disabled = false;
-      btnLock.className = 'w-full py-3 px-4 rounded-xl font-black text-sm tracking-wider text-white btn-lock-tactical cursor-pointer flex items-center justify-center gap-2 uppercase shadow-xl';
+    if (btnLock) {
+      if (data.hasGuessed && data.lockedGuess) {
+        state.currentPin = data.lockedGuess;
+        btnLock.disabled = true;
+        btnLock.className = 'btn-3d w-full py-3.5 px-4 font-black text-sm tracking-wider text-emerald-300 bg-slate-900 cursor-not-allowed flex items-center justify-center gap-2 uppercase shadow-inner border border-emerald-500/40';
+        btnLock.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping mr-1"></span><span>Guess Locked — Waiting for others...</span>';
+      } else if (data.currentPin) {
+        state.currentPin = data.currentPin;
+        btnLock.disabled = false;
+        btnLock.className = 'btn-3d w-full py-3.5 px-4 font-black text-sm tracking-wider text-white btn-lock-tactical cursor-pointer flex items-center justify-center gap-2 uppercase shadow-xl';
+      }
     }
 
     if (state.currentPin && guessMap) {
@@ -1389,6 +1461,7 @@ socket.on('game_over', (data) => {
 
 // Return to Lobby
 socket.on('return_to_lobby', (data) => {
+  state.userLeftToLobby = false;
   state.currentRound = 0;
   state.totalScore = 0;
   state.currentPin = null;

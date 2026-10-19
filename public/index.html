@@ -95,7 +95,7 @@
             <button
               type="button"
               id="btn-random-name"
-              class="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
+              class="btn-3d btn-3d-slate btn-3d-mini text-[11px] font-bold text-cyan-300 flex items-center gap-1"
             >
               <span>🎲 Roll Random</span>
             </button>
@@ -105,7 +105,7 @@
             id="input-username"
             maxlength="18"
             placeholder="e.g. ApexAtlas, Nomad, GeoKing"
-            class="w-full px-4 py-3.5 bg-slate-950/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent font-semibold tracking-wide text-sm"
+            class="input-3d w-full px-4 py-3.5 rounded-xl text-white placeholder-slate-500 focus:outline-none font-semibold tracking-wide text-sm"
             required
             autocomplete="off"
           />
@@ -115,7 +115,7 @@
         <button
           type="submit"
           id="btn-save-username"
-          class="w-full py-4 px-6 rounded-xl font-black text-sm tracking-wider uppercase text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-xl shadow-cyan-500/20 flex items-center justify-center gap-2"
+          class="btn-3d btn-3d-cyan btn-3d-hero w-full py-4 px-6 text-sm tracking-wider uppercase text-white flex items-center justify-center gap-2"
         >
           <span>Enter Match Lobby</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +148,7 @@
         <button
           id="btn-toggle-sound"
           title="Toggle Audio Effects"
-          class="w-9 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 flex items-center justify-center transition-colors text-base"
+          class="btn-3d btn-3d-slate w-9 h-9 rounded-xl text-slate-200 flex items-center justify-center text-base"
         >
           🔊
         </button>
@@ -158,7 +158,7 @@
         </div>
         <button
           id="btn-change-username"
-          class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 transition-colors"
+          class="btn-3d btn-3d-slate btn-3d-mini px-3.5 py-1.5 text-xs font-bold text-slate-200"
         >
           Rename
         </button>
@@ -183,13 +183,13 @@
         <div class="flex items-center gap-2">
           <button
             id="btn-show-qr"
-            class="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-md"
+            class="btn-3d btn-3d-slate px-4 py-2.5 text-xs font-bold flex items-center gap-1.5"
           >
             <span>📱 QR Code</span>
           </button>
           <button
             id="btn-copy-link"
-            class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-cyan-600/30 uppercase tracking-wider"
+            class="btn-3d btn-3d-cyan px-4 py-2.5 text-xs font-black flex items-center gap-2 tracking-wider"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
@@ -220,7 +220,7 @@
 
         <button
           id="btn-join-in-progress"
-          class="w-full sm:w-auto py-3.5 px-7 rounded-2xl font-black text-sm tracking-wider text-white bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 active:scale-95 transition-all shadow-xl shadow-emerald-500/30 flex items-center justify-center gap-2 uppercase cursor-pointer"
+          class="btn-3d btn-3d-emerald w-full sm:w-auto py-3.5 px-7 font-black text-sm tracking-wider text-white flex items-center justify-center gap-2 uppercase cursor-pointer"
         >
           <span>⚡ Join Match Now</span>
         </button>
@@ -255,7 +255,7 @@
             <label for="lobby-region-select" class="text-[11px] text-slate-400 font-bold hidden sm:inline">Region:</label>
             <select
               id="lobby-region-select"
-              class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer"
+              class="select-3d w-full sm:w-auto text-xs font-bold transition-all cursor-pointer"
             >
               <option value="all">🌐 Worldwide (All 135 Locations)</option>
               <option value="asia">🌏 Asia Map (42 Road Locations)</option>
@@ -272,16 +272,16 @@
         </div>
 
         <!-- Rules Briefing Badges -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs text-slate-400 mb-6">
-          <div class="flex items-start gap-2.5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <div class="rule-card-3d p-4 flex items-start gap-2.5">
             <span class="text-cyan-400 text-lg">🏁</span>
             <div><strong class="text-slate-200 block text-xs">10 Tactical Rounds</strong> Curated Street View in Asia, Africa & Worldwide.</div>
           </div>
-          <div class="flex items-start gap-2.5">
+          <div class="rule-card-3d p-4 flex items-start gap-2.5">
             <span class="text-amber-400 text-lg">⚡</span>
             <div><strong class="text-slate-200 block text-xs">20s Trigger</strong> First locked guess starts an urgent 20s countdown!</div>
           </div>
-          <div class="flex items-start gap-2.5">
+          <div class="rule-card-3d p-4 flex items-start gap-2.5">
             <span class="text-emerald-400 text-lg">🌐</span>
             <div><strong class="text-slate-200 block text-xs">Live LAN Joins</strong> Late joiners can jump straight into the ongoing match!</div>
           </div>
@@ -290,7 +290,7 @@
         <!-- Action: Start Game Button -->
         <button
           id="btn-start-game"
-          class="w-full py-4 sm:py-5 px-8 rounded-2xl font-black text-lg sm:text-xl text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 active:scale-[0.99] transition-all shadow-2xl shadow-cyan-600/30 flex items-center justify-center gap-3 uppercase tracking-wider"
+          class="btn-3d btn-3d-cyan btn-3d-hero w-full py-4 sm:py-5 px-8 text-white flex items-center justify-center gap-3 uppercase tracking-wider"
         >
           <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
@@ -329,15 +329,23 @@
         </div>
       </div>
 
-      <button
-        onclick="window.location.reload();"
-        class="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 transition-all flex items-center justify-center gap-2"
-      >
-        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-        <span>Refresh Connection</span>
-      </button>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button
+          id="btn-locked-go-lobby"
+          class="btn-3d btn-3d-slate flex-1 py-3.5 px-6 font-bold text-sm text-white flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <span>🚪 Go to Lobby</span>
+        </button>
+        <button
+          onclick="window.location.reload();"
+          class="btn-3d btn-3d-cyan flex-1 py-3.5 px-6 font-bold text-sm text-white flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <span>Refresh</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -415,7 +423,7 @@
         <button
           id="hud-btn-stop-game"
           title="Stop Match & Return to Lobby (Host Only)"
-          class="hidden py-2 px-3.5 rounded-xl font-black text-xs text-red-300 bg-red-950/85 hover:bg-red-900 border border-red-500/50 shadow-xl shadow-red-950/60 transition-all flex items-center gap-1.5 uppercase tracking-wider active:scale-95"
+          class="btn-3d btn-3d-danger hidden py-2 px-3.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5"
         >
           <span>🛑 Stop Match</span>
         </button>
@@ -423,10 +431,10 @@
         <!-- Player: Return to Lobby Button -->
         <button
           id="hud-btn-leave-game"
-          title="Return to Lobby"
-          class="py-2 px-3.5 rounded-xl font-bold text-xs text-slate-300 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 shadow-xl transition-all flex items-center gap-1.5 active:scale-95"
+          title="Go to Lobby"
+          class="btn-3d btn-3d-slate py-2 px-3.5 text-xs font-bold text-slate-200 flex items-center gap-1.5 cursor-pointer"
         >
-          <span>🚪 Lobby</span>
+          <span>🚪 Go to Lobby</span>
         </button>
       </div>
 
@@ -458,21 +466,21 @@
             <button
               id="btn-toggle-map-theme"
               title="Switch English Map Style (Light/Dark)"
-              class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700 transition-colors"
+              class="btn-3d btn-3d-slate btn-3d-mini text-[10px]"
             >
               🌙 Dark
             </button>
             <button
               id="btn-center-map"
               title="Reset World Center"
-              class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700 transition-colors"
+              class="btn-3d btn-3d-slate btn-3d-mini text-[10px]"
             >
               Reset
             </button>
             <button
               id="btn-toggle-map-size"
               title="Expand / Shrink (Hotkey: M)"
-              class="px-2.5 py-1 rounded bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-[10px] uppercase font-black transition-colors"
+              class="btn-3d btn-3d-cyan btn-3d-mini text-[10px] text-white"
             >
               Expand
             </button>
@@ -487,7 +495,7 @@
           <button
             id="btn-lock-guess"
             disabled
-            class="w-full py-3 px-4 rounded-xl font-black text-sm tracking-wider text-white bg-slate-800 cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 uppercase shadow-lg border border-slate-700/60"
+            class="btn-3d w-full py-3.5 px-4 font-black text-sm tracking-wider text-slate-400 bg-slate-800/90 cursor-not-allowed flex items-center justify-center gap-2 uppercase border border-slate-700/60"
           >
             <span>Lock in Guess</span>
             <span class="kbd-badge ml-1 hidden sm:inline">SPACE</span>
@@ -520,12 +528,21 @@
       </div>
 
       <!-- Action & Auto-advance Bar -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
+        <!-- Return to Lobby Button (For all players/host) -->
+        <button
+          id="results-btn-leave-game"
+          title="Go to Lobby"
+          class="btn-3d btn-3d-slate py-2.5 px-4 text-xs font-bold text-slate-200 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>🚪 Go to Lobby</span>
+        </button>
+
         <!-- Host Only Stop Game in Results -->
         <button
           id="results-btn-stop-game"
           title="Stop Match & Return to Lobby (Host Only)"
-          class="hidden py-3 px-4 rounded-xl font-black text-xs text-red-300 bg-red-950/80 hover:bg-red-900 border border-red-500/50 shadow-lg shadow-red-950/50 transition-all flex items-center gap-1.5 uppercase tracking-wider active:scale-95 cursor-pointer"
+          class="btn-3d btn-3d-danger hidden py-2.5 px-4 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
         >
           <span>🛑 Stop Match</span>
         </button>
@@ -536,7 +553,7 @@
         </div>
         <button
           id="btn-next-round"
-          class="py-3 px-6 rounded-xl font-black text-sm tracking-wider text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 active:scale-95 transition-all shadow-lg shadow-cyan-600/30 flex items-center gap-2 uppercase"
+          class="btn-3d btn-3d-cyan py-3 px-6 text-sm tracking-wider text-white flex items-center gap-2 uppercase cursor-pointer"
         >
           <span id="btn-next-round-text">Next Round (Round 2)</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -616,10 +633,10 @@
   </div>
 
   <!-- VIEW 5: FINAL PODIUM & GAME OVER (GAME_OVER) -->
-  <div id="view-gameover" class="view-container fixed inset-0 z-40 bg-cyberdark flex flex-col items-center justify-center p-4 sm:p-8 overflow-y-auto hidden">
+  <div id="view-gameover" class="view-container fixed inset-0 z-40 bg-cyberdark flex flex-col items-center justify-start sm:justify-center p-4 sm:p-8 overflow-y-auto py-10 hidden">
     <div class="max-w-3xl w-full flex flex-col items-center text-center">
-      <!-- Trophy Icon -->
-      <div class="w-20 h-20 rounded-3xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-4xl shadow-2xl shadow-amber-500/20 mb-3 animate-bounce">
+      <!-- Trophy Icon with 3D Aura -->
+      <div class="w-20 h-20 rounded-3xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-4xl shadow-2xl shadow-amber-500/30 mb-3 animate-bounce">
         🏆
       </div>
 
@@ -632,7 +649,7 @@
       </p>
 
       <!-- 3D Olympic-Style Podium Top 3 Cards -->
-      <div id="podium-container" class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mb-8 items-end">
+      <div id="podium-container" class="podium-stage grid grid-cols-1 sm:grid-cols-3 gap-5 w-full mb-8 items-end">
         <!-- Rendered via JS -->
       </div>
 
@@ -659,12 +676,13 @@
       <!-- Action: Play Again / Return to Lobby -->
       <button
         id="btn-reset-lobby"
-        class="py-4 px-10 rounded-2xl font-black text-lg text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 active:scale-95 transition-all shadow-2xl shadow-cyan-600/30 uppercase tracking-wider flex items-center gap-3"
+        title="Go to Lobby"
+        class="btn-3d btn-3d-emerald btn-3d-hero py-4 px-10 text-lg text-white flex items-center gap-3 cursor-pointer"
       >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
-        <span>Play Again (Return to Lobby)</span>
+        <span>Go to Lobby (Play Again)</span>
       </button>
     </div>
   </div>
