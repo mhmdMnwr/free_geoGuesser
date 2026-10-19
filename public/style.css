@@ -100,7 +100,9 @@ html, body {
   position: fixed;
   bottom: 0;
   left: 0;
-  width: 220px;
+  min-width: 180px;
+  width: auto;
+  max-width: 440px;
   height: 38px;
   background: #090d16;
   border-top-right-radius: 14px;
@@ -264,17 +266,6 @@ html, body {
   z-index: 3;
 }
 
-/* Closest Landmark Telemetry Panel */
-#closest-landmark-panel {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(9, 13, 22, 0.98));
-  border-top: 1px solid rgba(56, 189, 248, 0.2);
-  transition: all 0.25s ease;
-}
-
-#closest-landmark-panel.active {
-  border-top-color: #38bdf8;
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.12), rgba(10, 14, 26, 0.98));
-}
 
 /* ============================================================
    TACTICAL LOCK IN GUESS BUTTON

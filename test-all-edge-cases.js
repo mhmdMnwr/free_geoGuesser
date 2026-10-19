@@ -128,12 +128,14 @@ async function runExhaustiveTests() {
     const userSetRename = await userPromiseRename;
     assert(userSetRename.username === 'CaptainAlex', 'Allows changing username while in LOBBY');
 
-    // Session restoration in lobby
+    // Disconnect in lobby -> inactive player name is deleted per user directive
     clientVal.disconnect();
     await sleep(150);
     const clientValRejoin = ioClient(SERVER_URL, { query: { mockIp: '10.0.0.1' } });
-    const restored = await new Promise((r) => clientValRejoin.once('session_restored', r));
-    assert(restored.username === 'CaptainAlex', 'Session restored on reconnect during LOBBY');
+    const promptReconnect = await new Promise((r) => clientValRejoin.once('prompt_username', r));
+    assert(promptReconnect.ip === '10.0.0.1', 'Disconnected player is prompted for callsign upon reconnecting');
+    clientValRejoin.emit('set_username', { username: 'CaptainAlex' });
+    await new Promise((r) => clientValRejoin.once('username_set', r));
 
     // =========================================================================
     // SUITE 3: START GAME EDGE CASES
@@ -218,10 +220,11 @@ async function runExhaustiveTests() {
     clientPlayer2.emit('update_pin', { lat: draftLat, lng: draftLng });
 
     // Client 4 connects with mock IP 10.0.0.4 BEFORE round 1 ends, but match is in progress!
-    // Let's verify Client 4 is blocked!
+    // User specification: give them lobby, current game status, and possibility to join
     const clientBlocked = ioClient(SERVER_URL, { query: { mockIp: '10.0.0.4' } });
-    const lockedData = await new Promise((r) => clientBlocked.once('match_locked', r));
-    assert(lockedData && lockedData.reason, 'Mid-game connection from new IP is blocked with match_locked');
+    const promptData = await new Promise((r) => clientBlocked.once('prompt_username', r));
+    assert(promptData && promptData.inProgress, 'Mid-game connection receives prompt_username with inProgress: true');
+    assert(promptData.gameStatus && typeof promptData.gameStatus.currentRound === 'number', 'Mid-game connection receives live match status');
 
     // Wait for the 20s countdown to finish
     console.log('  Waiting for countdown to expire naturally to verify draft pin scoring...');
@@ -234,31 +237,37 @@ async function runExhaustiveTests() {
     assert(p2Result.roundScore >= 4500, `Scored high points (${p2Result.roundScore}) using draft pin close to target`);
 
     // =========================================================================
-    // SUITE 6: MID-GAME RECONNECTION
+    // SUITE 6: MID-GAME JOIN & INACTIVE PLAYER REMOVAL
     // =========================================================================
-    console.log('\n--- SUITE 6: Mid-Game Reconnection ---');
+    console.log('\n--- SUITE 6: Mid-Game Join & Inactive Player Removal ---');
     // Advance to Round 2
     const r2StartP = new Promise((r) => clientValRejoin.once('round_started', r));
     clientValRejoin.emit('next_round');
     await r2StartP;
 
-    // Disconnect CaptainAlex and reconnect mid-round
-    clientValRejoin.disconnect();
-    await sleep(200);
+    // Client 4 registers callsign and joins live match
+    const regP = new Promise((r) => clientBlocked.once('username_set', r));
+    clientBlocked.emit('set_username', 'DeltaDan');
+    await regP;
 
-    const clientAlexReconnected = ioClient(SERVER_URL, { query: { mockIp: '10.0.0.1' } });
-    const rejoinMatchData = await new Promise((r) => clientAlexReconnected.once('rejoin_match', r));
-    assert(rejoinMatchData.username === 'CaptainAlex', 'Rejoin returns correct player identity');
-    assert(rejoinMatchData.round === 2 && rejoinMatchData.status === 'ROUND_ACTIVE', 'Rejoin returns active round 2 state');
-    assert(rejoinMatchData.panoramaCoords && typeof rejoinMatchData.panoramaCoords.lat === 'number', 'Rejoin provides panorama coordinates');
-    assert(rejoinMatchData.hasGuessed === false, 'Rejoin accurately reflects hasGuessed = false');
+    const joinP = new Promise((r) => clientBlocked.once('round_started', r));
+    clientBlocked.emit('join_game');
+    const r2Joined = await joinP;
+    assert(r2Joined.round === 2, 'Client 4 (DeltaDan) joined Round 2 in progress');
+
+    // Inactive player disconnects -> name deleted immediately per user directive
+    const leftP = new Promise((r) => clientPlayer2.once('player_left', r));
+    clientValRejoin.disconnect();
+    const leftData = await leftP;
+    assert(leftData.username === 'CaptainAlex', 'CaptainAlex reported as left upon disconnect');
+    assert(leftData.remainingCount === 2, 'Player count reduced to 2 active players (DeltaDan and ExplorerBob)');
 
     // =========================================================================
     // SUITE 7: ALL PLAYERS GUESS EARLY -> IMMEDIATE ROUND COMPLETION
     // =========================================================================
     console.log('\n--- SUITE 7: Early Guessing Immediate Completion ---');
     const round2ResultsP = new Promise((r) => clientPlayer2.once('round_results', r));
-    clientAlexReconnected.emit('lock_guess', { lat: 35.65, lng: 139.7 });
+    clientBlocked.emit('lock_guess', { lat: 35.65, lng: 139.7 });
     clientPlayer2.emit('lock_guess', { lat: 35.65, lng: 139.7 });
 
     const startTime = Date.now();
@@ -267,6 +276,7 @@ async function runExhaustiveTests() {
 
     assert(duration < 2000, `Round ended immediately (${duration}ms) without waiting for 20s`);
     assert(round2Results.round === 2, 'Round 2 results broadcasted');
+    assert(round2Results.closestPlayer && round2Results.closestPlayer.username, 'Round 2 results highlight closest player');
 
     // =========================================================================
     // SUITE 8: PROGRESSION THROUGH ROUND 10 TO GAME_OVER & RESET
@@ -279,7 +289,7 @@ async function runExhaustiveTests() {
       await nextRoundP;
 
       const rEndP = new Promise((res) => clientPlayer2.once('round_results', res));
-      clientAlexReconnected.emit('lock_guess', { lat: 10, lng: 10 });
+      clientBlocked.emit('lock_guess', { lat: 10, lng: 10 });
       clientPlayer2.emit('lock_guess', { lat: 10, lng: 10 });
       await rEndP;
     }
@@ -294,20 +304,15 @@ async function runExhaustiveTests() {
     assert(gameOverData.leaderboard[0].totalScore >= gameOverData.leaderboard[1].totalScore, 'Leaderboard is sorted descending by totalScore');
 
     // Test reset_to_lobby
-    console.log('\n--- SUITE 9: Reset to Lobby & Automatic Unlocking ---');
+    console.log('\n--- SUITE 9: Reset to Lobby & Return ---');
     const returnLobbyP = new Promise((res) => clientPlayer2.once('return_to_lobby', res));
-    const unblockedPromptP = new Promise((res) => clientBlocked.once('prompt_username', res));
+    const returnLobbyBlockedP = new Promise((res) => clientBlocked.once('return_to_lobby', res));
 
     clientPlayer2.emit('reset_to_lobby');
-    await returnLobbyP;
-    assert(true, 'Received return_to_lobby broadcast');
-
-    // Verify previously blocked client received prompt_username automatically without reloading!
-    const unblockedData = await unblockedPromptP;
-    assert(unblockedData.ip === '10.0.0.4', 'Previously blocked client automatically unblocked and prompted for username!');
+    await Promise.all([returnLobbyP, returnLobbyBlockedP]);
+    assert(true, 'Received return_to_lobby broadcast for all active clients');
 
     // Cleanup
-    clientAlexReconnected.disconnect();
     clientPlayer2.disconnect();
     clientBlocked.disconnect();
     clientUnregistered.disconnect();

@@ -1,5 +1,7 @@
 /**
  * Comprehensive Automated End-to-End Test Suite for LAN-Guessr
+ * Tests Host Controls, Region Selector (Africa/Asia), Mid-Game Join, Inactive Player Deletion,
+ * Closest Guesser Reveal, 20s Dynamic Timer, and Return to Lobby.
  */
 
 const { io: ioClient } = require('socket.io-client');
@@ -40,7 +42,7 @@ async function runTests() {
   }
 
   try {
-    // 1. Connect Client 1 (Alice, mock IP 192.168.1.10)
+    // 1. Connect Client 1 (Alice, mock IP 192.168.1.10) - becomes Host
     console.log('\n[TEST 1] Client 1 (Alice) connects during LOBBY...');
     const client1 = ioClient(SERVER_URL, { query: { mockIp: '192.168.1.10' } });
 
@@ -50,9 +52,17 @@ async function runTests() {
     client1.emit('set_username', { username: 'Alice' });
     const userSet1 = await new Promise((resolve) => client1.once('username_set', resolve));
     assert(userSet1.username === 'Alice', 'Client 1 registered as Alice');
+    assert(userSet1.isHost === true, 'Client 1 (first operative) is designated Host 👑');
 
-    // 2. Connect Client 2 (Bob, mock IP 192.168.1.20)
-    console.log('\n[TEST 2] Client 2 (Bob) connects during LOBBY...');
+    // 2. Host Selects Map Region (Asia or Africa)
+    console.log('\n[TEST 2] Host Alice selects Map Region "asia"...');
+    const regionPromise = new Promise((resolve) => client1.once('region_updated', resolve));
+    client1.emit('set_region', { region: 'asia' });
+    const regData = await regionPromise;
+    assert(regData.selectedRegion === 'asia', 'Map region successfully updated to "asia"');
+
+    // 3. Connect Client 2 (Bob, mock IP 192.168.1.20)
+    console.log('\n[TEST 3] Client 2 (Bob) connects during LOBBY...');
     const client2 = ioClient(SERVER_URL, { query: { mockIp: '192.168.1.20' } });
 
     const prompt2 = await new Promise((resolve) => client2.once('prompt_username', resolve));
@@ -61,12 +71,13 @@ async function runTests() {
     client2.emit('set_username', { username: 'Bob' });
     const userSet2 = await new Promise((resolve) => client2.once('username_set', resolve));
     assert(userSet2.username === 'Bob', 'Client 2 registered as Bob');
+    assert(userSet2.isHost === false, 'Client 2 is not host');
 
     // Wait for lobby_update showing both players
     await sleep(200);
 
-    // 3. Start Game
-    console.log('\n[TEST 3] Client 1 triggers start_game...');
+    // 4. Start Game
+    console.log('\n[TEST 4] Host Alice triggers start_game...');
     const roundStartedPromise1 = new Promise((resolve) => client1.once('round_started', resolve));
     const roundStartedPromise2 = new Promise((resolve) => client2.once('round_started', resolve));
 
@@ -77,31 +88,36 @@ async function runTests() {
     assert(roundData1.panoramaCoords && typeof roundData1.panoramaCoords.lat === 'number', 'Street View panorama coords provided');
     assert(roundData1.label === undefined, 'Round location label is HIDDEN from round_started payload');
 
-    // 4. Test Lockout: New IP connects while game is active
-    console.log('\n[TEST 4] Unrecognized Client 3 (Charlie, 192.168.1.99) connects during active match...');
+    // 5. User request: Mid-game connection receives lobby with match status and can join!
+    console.log('\n[TEST 5] Mid-game Client 3 (Charlie, 192.168.1.99) connects and joins live match...');
     const client3 = ioClient(SERVER_URL, { query: { mockIp: '192.168.1.99' } });
-    const matchLockedPromise = new Promise((resolve) => client3.once('match_locked', resolve));
-    const lockedData = await matchLockedPromise;
-    assert(lockedData && lockedData.reason, 'Client 3 correctly blocked with match_locked event');
+    const prompt3 = await new Promise((resolve) => client3.once('prompt_username', resolve));
+    assert(prompt3.inProgress === true && prompt3.gameStatus.status === 'ROUND_ACTIVE', 'Client 3 receives live match status in lobby');
 
-    // 5. Test Reconnection: Registered Client 1 disconnects and reconnects mid-game
-    console.log('\n[TEST 5] Client 1 reconnects (simulating browser refresh) mid-game...');
-    client1.disconnect();
-    await sleep(300);
+    client3.emit('set_username', { username: 'Charlie' });
+    await new Promise((resolve) => client3.once('username_set', resolve));
 
-    const client1Rejoin = ioClient(SERVER_URL, { query: { mockIp: '192.168.1.10' } });
-    const rejoinData = await new Promise((resolve) => client1Rejoin.once('rejoin_match', resolve));
-    assert(rejoinData.username === 'Alice' && rejoinData.round === 1, 'Client 1 seamlessly rejoined active round');
-    assert(rejoinData.status === 'ROUND_ACTIVE', 'Rejoin status is ROUND_ACTIVE');
+    // Charlie clicks "Join Game"
+    const charlieJoinPromise = new Promise((resolve) => client3.once('round_started', resolve));
+    client3.emit('join_game');
+    const charlieRound = await charlieJoinPromise;
+    assert(charlieRound.round === 1, 'Client 3 successfully joined ongoing Round 1!');
 
-    // 6. Test First-Guess Dynamic 20s Timer
-    console.log('\n[TEST 6] Alice places pin and locks guess (First guess of the round)...');
+    // 6. User request: "when a player is not playing at the time delete his name"
+    console.log('\n[TEST 6] Inactive player Charlie disconnects -> name deleted from active players...');
+    const playerLeftPromise = new Promise((resolve) => client1.once('player_left', resolve));
+    client3.disconnect();
+    const leftData = await playerLeftPromise;
+    assert(leftData.username === 'Charlie', 'Charlie reported as left the match');
+    assert(leftData.remainingCount === 2, 'Active players count accurately reduced to 2 (Charlie deleted)');
+
+    // 7. Test First-Guess Dynamic 20s Timer
+    console.log('\n[TEST 7] Alice places pin and locks guess (First guess of the round)...');
     const countdownPromise = new Promise((resolve) => client2.once('countdown_started', resolve));
     const timerTickPromise = new Promise((resolve) => client2.once('timer_tick', resolve));
 
-    // Guess coordinates near Eiffel Tower (48.85, 2.29)
-    client1Rejoin.emit('update_pin', { lat: 48.85, lng: 2.29 });
-    client1Rejoin.emit('lock_guess', { lat: 48.85, lng: 2.29 });
+    client1.emit('update_pin', { lat: 35.65, lng: 139.70 });
+    client1.emit('lock_guess', { lat: 35.65, lng: 139.70 });
 
     const countdownData = await countdownPromise;
     assert(countdownData.seconds === 20 && countdownData.triggeredBy === 'Alice', 'First guess triggered 20s countdown for all players');
@@ -109,68 +125,37 @@ async function runTests() {
     const tickData = await timerTickPromise;
     assert(typeof tickData.seconds === 'number', 'timer_tick broadcasted seconds remaining');
 
-    // 7. Test All Players Guessed -> Round Ends Immediately
-    console.log('\n[TEST 7] Bob locks guess before countdown reaches 0...');
+    // 8. Bob locks guess -> Round Ends Immediately & Closest Guesser Revealed
+    console.log('\n[TEST 8] Bob locks guess before countdown reaches 0...');
     const roundResultsPromise = new Promise((resolve) => client2.once('round_results', resolve));
 
-    client2.emit('lock_guess', { lat: 35.65, lng: 139.70 });
+    client2.emit('lock_guess', { lat: 35.00, lng: 135.77 });
     const resultsData = await roundResultsPromise;
-    assert(resultsData.round === 1, 'Round 1 ended immediately after all players guessed');
+    assert(resultsData.round === 1, 'Round 1 ended immediately after all active players guessed');
     assert(resultsData.target && resultsData.target.label, 'Target location revealed in round_results');
-    assert(resultsData.results.length === 2, 'Results include both Alice and Bob');
-    assert(typeof resultsData.results[0].roundScore === 'number', 'Round scores calculated via Haversine & decay math');
+    assert(resultsData.results.length === 2, 'Results only include currently active players (Alice & Bob)');
+    assert(resultsData.closestPlayer && resultsData.closestPlayer.username, `Closest guesser revealed: "${resultsData.closestPlayer.username}" (${resultsData.closestPlayer.distanceKm} km away)`);
 
-    // 8. Test Advance to Round 2
-    console.log('\n[TEST 8] Trigger next_round -> Round 2...');
-    const round2Promise = new Promise((resolve) => client2.once('round_started', resolve));
-    client2.emit('next_round');
-    const r2Data = await round2Promise;
-    assert(r2Data.round === 2, 'Successfully advanced to Round 2');
+    // 9. Host Stop Game at Any Time -> All Return to Lobby
+    console.log('\n[TEST 9] Host Alice stops the game mid-match...');
+    const stoppedPromise1 = new Promise((resolve) => client1.once('game_stopped', resolve));
+    const stoppedPromise2 = new Promise((resolve) => client2.once('game_stopped', resolve));
 
-    // 9. Fast-forward through remaining rounds to test GAME_OVER
-    console.log('\n[TEST 9] Fast-forwarding through rounds 2 to 10...');
-    for (let r = 2; r <= 10; r++) {
-      // Both guess quickly
-      const endPromise = new Promise((resolve) => client2.once('round_results', resolve));
-      client1Rejoin.emit('lock_guess', { lat: 0, lng: 0 });
-      client2.emit('lock_guess', { lat: 10, lng: 10 });
-      await endPromise;
+    client1.emit('stop_game');
 
-      if (r < 10) {
-        const nextStartPromise = new Promise((resolve) => client2.once('round_started', resolve));
-        client2.emit('next_round');
-        await nextStartPromise;
-      }
-    }
+    const [stop1, stop2] = await Promise.all([stoppedPromise1, stoppedPromise2]);
+    assert(stop1 && stop2, 'Host successfully stopped the match; all players returned to lobby');
 
-    // Trigger next_round on Round 10 -> GAME_OVER
-    console.log('\n[TEST 10] Trigger next_round from Round 10 -> Game Over...');
-    const gameOverPromise = new Promise((resolve) => client2.once('game_over', resolve));
-    client2.emit('next_round');
-    const gameOverData = await gameOverPromise;
-    assert(Array.isArray(gameOverData.leaderboard), 'Received game_over with final leaderboard');
-    assert(gameOverData.leaderboard.length === 2, 'Leaderboard contains both players ranked');
+    // 10. Non-host cannot stop game
+    console.log('\n[TEST 10] Non-host Bob attempts to stop game -> rejected...');
+    const errPromise = new Promise((resolve) => client2.once('error_message', resolve));
+    client2.emit('stop_game');
+    const errData = await errPromise;
+    assert(errData && errData.message.includes('host'), 'Server correctly rejected non-host stop_game command');
 
-    // 10. Test Reset to Lobby & Unlocking New Players
-    console.log('\n[TEST 11] Trigger reset_to_lobby...');
-    const returnLobbyPromise = new Promise((resolve) => client2.once('return_to_lobby', resolve));
-    client2.emit('reset_to_lobby');
-    await returnLobbyPromise;
-    assert(true, 'Returned to lobby');
-
-    // Charlie now connects and is NO LONGER blocked
-    console.log('\n[TEST 12] Previously blocked Client 3 connects after reset_to_lobby...');
-    client3.disconnect();
-    await sleep(200);
-
-    const client3Lobby = ioClient(SERVER_URL, { query: { mockIp: '192.168.1.99' } });
-    const prompt3 = await new Promise((resolve) => client3Lobby.once('prompt_username', resolve));
-    assert(prompt3.ip === '192.168.1.99', 'Client 3 successfully received prompt_username now that lobby is open!');
-
-    // Cleanup
-    client1Rejoin.disconnect();
+    // 11. Cleanup
+    client1.disconnect();
     client2.disconnect();
-    client3Lobby.disconnect();
 
     console.log(`\n🎉 ALL ${passedTests} VERIFICATION TESTS PASSED SUCCESSFULLY! 🎉\n`);
   } catch (err) {

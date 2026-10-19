@@ -199,6 +199,33 @@
         </div>
       </div>
 
+      <!-- Live Game In Progress Banner (For mid-game joiners) -->
+      <div
+        id="lobby-in-progress-card"
+        class="hidden tech-panel border-cyan-500/50 rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-cyan-950/80 via-slate-900/90 to-cyan-950/80 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4"
+      >
+        <div class="flex items-center gap-3.5 text-center sm:text-left">
+          <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-2xl flex-shrink-0 animate-pulse">
+            🎮
+          </div>
+          <div>
+            <div class="flex items-center justify-center sm:justify-start gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span class="text-xs uppercase font-black text-cyan-300 tracking-wider">Live Match In Progress</span>
+            </div>
+            <div id="lobby-match-status-text" class="text-base font-black text-white">Round 1 of 10 in Progress</div>
+            <div id="lobby-match-host-text" class="text-xs text-slate-400">Host: Operative 👑</div>
+          </div>
+        </div>
+
+        <button
+          id="btn-join-in-progress"
+          class="w-full sm:w-auto py-3.5 px-7 rounded-2xl font-black text-sm tracking-wider text-white bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 active:scale-95 transition-all shadow-xl shadow-emerald-500/30 flex items-center justify-center gap-2 uppercase cursor-pointer"
+        >
+          <span>⚡ Join Match Now</span>
+        </button>
+      </div>
+
       <!-- Player List Card -->
       <div class="tech-panel rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col">
         <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
@@ -210,7 +237,32 @@
           </div>
           <div class="flex items-center gap-2 text-xs text-slate-400">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="tech-badge text-emerald-400">LAN IP Guard Active</span>
+            <span class="tech-badge text-emerald-400">LAN Host Active</span>
+          </div>
+        </div>
+
+        <!-- Target Map Region & Pool (Host Configurable) -->
+        <div class="mb-5 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">🗺️</span>
+            <div>
+              <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Map Pool & Theme</div>
+              <div id="lobby-region-display" class="text-xs font-black text-cyan-300">Worldwide (135 Verified Road Locations)</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <label for="lobby-region-select" class="text-[11px] text-slate-400 font-bold hidden sm:inline">Region:</label>
+            <select
+              id="lobby-region-select"
+              class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer"
+            >
+              <option value="all">🌐 Worldwide (All 135 Locations)</option>
+              <option value="asia">🌏 Asia Map (42 Road Locations)</option>
+              <option value="africa">🌍 Africa Map (30 Road Locations)</option>
+              <option value="europe">🏛️ Europe Map (31 Road Locations)</option>
+              <option value="americas">🌎 Americas Map (26 Road Locations)</option>
+            </select>
           </div>
         </div>
 
@@ -223,15 +275,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs text-slate-400 mb-6">
           <div class="flex items-start gap-2.5">
             <span class="text-cyan-400 text-lg">🏁</span>
-            <div><strong class="text-slate-200 block text-xs">10 Tactical Rounds</strong> 50+ hand-curated Street View targets globally.</div>
+            <div><strong class="text-slate-200 block text-xs">10 Tactical Rounds</strong> Curated Street View in Asia, Africa & Worldwide.</div>
           </div>
           <div class="flex items-start gap-2.5">
             <span class="text-amber-400 text-lg">⚡</span>
             <div><strong class="text-slate-200 block text-xs">20s Trigger</strong> First locked guess starts an urgent 20s countdown!</div>
           </div>
           <div class="flex items-start gap-2.5">
-            <span class="text-red-400 text-lg">🔒</span>
-            <div><strong class="text-slate-200 block text-xs">Zero Mid-Joins</strong> Lobby locks completely once match commences.</div>
+            <span class="text-emerald-400 text-lg">🌐</span>
+            <div><strong class="text-slate-200 block text-xs">Live LAN Joins</strong> Late joiners can jump straight into the ongoing match!</div>
           </div>
         </div>
 
@@ -298,6 +350,8 @@
         class="w-full h-full border-0 absolute inset-0 z-0 bg-slate-950"
         src="about:blank"
         allowfullscreen
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="no-referrer-when-downgrade"
         loading="eager"
       ></iframe>
 
@@ -349,9 +403,31 @@
       </div>
 
       <!-- Bottom-Left Street View Shield -->
-      <div id="streetview-bottom-shield">
-        <span>🛡️</span>
-        <span>LAN-GUESSR TACTICAL</span>
+      <div id="streetview-bottom-shield" class="flex items-center gap-2">
+        <span class="text-cyan-400">🧭</span>
+        <span class="font-black text-slate-200">OFFICIAL STREET VIEW</span>
+        <span class="hidden sm:inline text-slate-400 font-normal border-l border-slate-700 pl-2">🚗 Click arrows or road to move</span>
+      </div>
+
+      <!-- Top-Right Match Actions (Host Stop & Player Leave) -->
+      <div class="fixed top-3.5 right-4 z-30 flex items-center gap-2 pointer-events-auto">
+        <!-- Host Only: Stop Game Button -->
+        <button
+          id="hud-btn-stop-game"
+          title="Stop Match & Return to Lobby (Host Only)"
+          class="hidden py-2 px-3.5 rounded-xl font-black text-xs text-red-300 bg-red-950/85 hover:bg-red-900 border border-red-500/50 shadow-xl shadow-red-950/60 transition-all flex items-center gap-1.5 uppercase tracking-wider active:scale-95"
+        >
+          <span>🛑 Stop Match</span>
+        </button>
+
+        <!-- Player: Return to Lobby Button -->
+        <button
+          id="hud-btn-leave-game"
+          title="Return to Lobby"
+          class="py-2 px-3.5 rounded-xl font-bold text-xs text-slate-300 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 shadow-xl transition-all flex items-center gap-1.5 active:scale-95"
+        >
+          <span>🚪 Lobby</span>
+        </button>
       </div>
 
       <!-- Top-Center Dynamic Timer Banner -->
@@ -406,20 +482,6 @@
         <!-- Leaflet Map Container (100% in English) -->
         <div id="guess-map" class="relative z-0"></div>
 
-        <!-- Closest Landmark Telemetric Panel on Bottom -->
-        <div id="closest-landmark-panel" class="px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-          <div class="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
-            <span class="text-base flex-shrink-0 animate-bounce">📍</span>
-            <div class="flex flex-col text-left">
-              <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Closest Landmark</span>
-              <span id="closest-landmark-name" class="font-extrabold text-cyan-300 text-xs truncate">Click map to pinpoint location</span>
-            </div>
-          </div>
-          <div id="closest-landmark-dist" class="font-mono text-xs font-black text-amber-400 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 whitespace-nowrap hidden">
-            -- km
-          </div>
-        </div>
-
         <!-- Map Footer / Lock In Guess Button -->
         <div class="p-3 bg-slate-950/95 border-t border-slate-800 flex flex-col gap-2">
           <button
@@ -459,6 +521,15 @@
 
       <!-- Action & Auto-advance Bar -->
       <div class="flex items-center gap-3">
+        <!-- Host Only Stop Game in Results -->
+        <button
+          id="results-btn-stop-game"
+          title="Stop Match & Return to Lobby (Host Only)"
+          class="hidden py-3 px-4 rounded-xl font-black text-xs text-red-300 bg-red-950/80 hover:bg-red-900 border border-red-500/50 shadow-lg shadow-red-950/50 transition-all flex items-center gap-1.5 uppercase tracking-wider active:scale-95 cursor-pointer"
+        >
+          <span>🛑 Stop Match</span>
+        </button>
+
         <div class="text-right hidden sm:block">
           <div class="text-[10px] text-slate-400 uppercase font-semibold">Auto-advance</div>
           <div id="auto-advance-timer" class="text-xs font-mono font-bold text-amber-400">15s</div>
@@ -500,6 +571,24 @@
 
       <!-- Right/Bottom: Live Cumulative Leaderboard Table -->
       <div class="lg:col-span-5 xl:col-span-4 flex flex-col bg-slate-950/70 overflow-y-auto p-4 sm:p-6">
+        <!-- Closest Guesser of the Round Highlight Banner -->
+        <div
+          id="closest-guesser-card"
+          class="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-amber-500/20 border border-amber-400/40 shadow-lg flex items-center justify-between gap-3"
+        >
+          <div class="flex items-center gap-3">
+            <span class="text-2xl animate-bounce">🎯</span>
+            <div>
+              <div class="text-[10px] uppercase font-black text-amber-400 tracking-wider">Closest Guess of the Round</div>
+              <div id="closest-guesser-username" class="text-base font-black text-white">--</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div id="closest-guesser-distance" class="text-sm font-extrabold text-amber-300 font-mono">-- km away</div>
+            <div id="closest-guesser-score" class="text-xs text-emerald-400 font-bold">+-- pts</div>
+          </div>
+        </div>
+
         <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
           <h3 class="font-black text-lg text-white">Cumulative Leaderboard</h3>
           <span class="text-xs text-slate-400">Click row to focus map</span>

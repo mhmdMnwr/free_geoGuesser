@@ -63,6 +63,8 @@ app.get('/api/status', (req, res) => {
     currentRound: gameState.currentRound,
     totalRounds: gameState.totalRounds,
     playerCount: Object.keys(gameState.players).length,
+    selectedRegion: gameState.selectedRegion,
+    hostIp: gameState.hostIp,
   });
 });
 
@@ -123,13 +125,15 @@ const gameState = {
   status: 'LOBBY', // 'LOBBY' | 'ROUND_ACTIVE' | 'ROUND_COUNTDOWN' | 'ROUND_RESULTS' | 'GAME_OVER'
   currentRound: 0,
   totalRounds: 10,
-  selectedLocations: [], // Array of 10 { lat, lng, label }
-  roundTarget: null,     // Current round target (lat, lng, label)
+  selectedRegion: 'all', // 'all' | 'asia' | 'africa' | 'europe' | 'americas'
+  selectedLocations: [], // Array of 10 { lat, lng, label, region }
+  roundTarget: null,     // Current round target (lat, lng, label, region)
   countdownSeconds: null,
   countdownInterval: null,
   firstGuesserName: null,
   lastRoundResults: null,
   lastGameOver: null,
+  hostIp: null,
   players: {
     // Keyed by normalized IP
   },
@@ -141,6 +145,7 @@ function getLobbyPlayers() {
     username: p.username,
     connected: p.connected,
     totalScore: p.totalScore,
+    isHost: p.ip === gameState.hostIp,
   }));
 }
 
@@ -151,6 +156,20 @@ function shuffleArray(arr) {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
+}
+
+function checkAllGuessed() {
+  const playerList = Object.values(gameState.players);
+  if (playerList.length === 0) return;
+  const allGuessed = playerList.every((p) => p.hasGuessed);
+  if (allGuessed) {
+    console.log('[LAN-Guessr] All active players have guessed! Ending round immediately.');
+    if (gameState.countdownInterval) {
+      clearInterval(gameState.countdownInterval);
+      gameState.countdownInterval = null;
+    }
+    endRound();
+  }
 }
 
 function startRound(roundNumber) {
@@ -175,7 +194,7 @@ function startRound(roundNumber) {
     p.lastRoundDistanceKm = null;
   }
 
-  console.log(`[LAN-Guessr] Starting Round ${roundNumber}/${gameState.totalRounds}: ${gameState.roundTarget.label}`);
+  console.log(`[LAN-Guessr] Starting Round ${roundNumber}/${gameState.totalRounds}: ${gameState.roundTarget.label} (${gameState.roundTarget.region || 'global'})`);
 
   // Crucial: emit panoramaCoords only, never leak roundTarget.label during round
   io.emit('round_started', {
@@ -187,6 +206,7 @@ function startRound(roundNumber) {
     },
     guessedCount: 0,
     totalPlayers: Object.keys(gameState.players).length,
+    hostIp: gameState.hostIp,
   });
 }
 
@@ -228,7 +248,18 @@ function endRound() {
     roundScore: p.lastRoundScore,
     totalScore: p.totalScore,
     hasGuessed: !!p.lockedGuess,
+    isHost: p.ip === gameState.hostIp,
   }));
+
+  // Identify closest guesser of the round (reveals username of the closest one)
+  let closestPlayer = null;
+  let minDistanceKm = Infinity;
+  for (const p of results) {
+    if (p.distanceKm !== null && !isNaN(p.distanceKm) && p.distanceKm < minDistanceKm) {
+      minDistanceKm = p.distanceKm;
+      closestPlayer = p;
+    }
+  }
 
   const payload = {
     round: gameState.currentRound,
@@ -240,10 +271,19 @@ function endRound() {
     },
     results,
     leaderboard: results,
+    closestPlayer: closestPlayer
+      ? {
+          username: closestPlayer.username,
+          distanceKm: closestPlayer.distanceKm,
+          roundScore: closestPlayer.roundScore,
+          guessCoords: closestPlayer.guessCoords,
+        }
+      : null,
+    hostIp: gameState.hostIp,
   };
 
   gameState.lastRoundResults = payload;
-  console.log(`[LAN-Guessr] Round ${gameState.currentRound} ended. Top score: ${results[0]?.username} (${results[0]?.totalScore} pts)`);
+  console.log(`[LAN-Guessr] Round ${gameState.currentRound} ended. Closest: ${closestPlayer?.username || 'None'} (${closestPlayer?.distanceKm || 0} km). Top score: ${results[0]?.username} (${results[0]?.totalScore} pts)`);
   io.emit('round_results', payload);
 }
 
@@ -251,6 +291,11 @@ function endRound() {
 io.on('connection', (socket) => {
   const ip = getClientIp(socket);
   console.log(`[LAN-Guessr] Connection from IP: ${ip} (Socket ID: ${socket.id})`);
+
+  // Ensure host exists if there are registered players
+  if (!gameState.hostIp && Object.keys(gameState.players).length > 0) {
+    gameState.hostIp = Object.keys(gameState.players)[0];
+  }
 
   // Case A: LOBBY Phase
   if (gameState.status === 'LOBBY') {
@@ -265,13 +310,22 @@ io.on('connection', (socket) => {
         username: player.username,
         totalScore: player.totalScore,
         status: gameState.status,
+        isHost: (ip === gameState.hostIp),
+        hostIp: gameState.hostIp,
+        selectedRegion: gameState.selectedRegion,
       });
-      io.emit('lobby_update', { players: getLobbyPlayers() });
+      io.emit('lobby_update', {
+        players: getLobbyPlayers(),
+        hostIp: gameState.hostIp,
+        selectedRegion: gameState.selectedRegion,
+      });
     } else {
       // New IP during lobby
       socket.emit('prompt_username', {
         ip,
         currentUsername: null,
+        isHost: (Object.keys(gameState.players).length === 0),
+        selectedRegion: gameState.selectedRegion,
       });
     }
   } else {
@@ -306,27 +360,31 @@ io.on('connection', (socket) => {
         gameOverResults: gameState.lastGameOver,
         guessedCount,
         totalPlayers,
+        isHost: (ip === gameState.hostIp),
+        hostIp: gameState.hostIp,
       });
       console.log(`[LAN-Guessr] Player ${player.username} (${ip}) rejoined match in status ${gameState.status}`);
     } else {
-      // Unrecognized IP mid-game -> MATCH LOCKED!
-      console.log(`[LAN-Guessr] Blocked new IP ${ip} connecting mid-game (Status: ${gameState.status})`);
-      socket.data.blocked = true;
-      socket.emit('match_locked', {
-        reason: 'A game is currently in progress. New players cannot enter until the match finishes.',
+      // User request: Give them lobby, current game status, and the possibility to join
+      console.log(`[LAN-Guessr] New user from IP ${ip} connected while game in progress (Status: ${gameState.status})`);
+      socket.emit('prompt_username', {
+        ip,
+        currentUsername: null,
+        inProgress: true,
+        gameStatus: {
+          status: gameState.status,
+          currentRound: gameState.currentRound,
+          totalRounds: gameState.totalRounds,
+          playerCount: Object.keys(gameState.players).length,
+          hostName: gameState.players[gameState.hostIp]?.username || 'Host',
+          selectedRegion: gameState.selectedRegion,
+        },
       });
-      return;
     }
   }
 
   // Event: set_username (Registers or updates username)
   socket.on('set_username', (data) => {
-    if (socket.data?.blocked) return;
-    if (gameState.status !== 'LOBBY') {
-      socket.emit('error_message', { message: 'Cannot change username while match is active.' });
-      return;
-    }
-
     const rawUsername = typeof data === 'string' ? data : data?.username;
     let cleanName = String(rawUsername || '').replace(/<[^>]*>/g, '').trim();
 
@@ -337,6 +395,14 @@ io.on('connection', (socket) => {
     if (cleanName.length > 18) {
       cleanName = cleanName.substring(0, 18);
     }
+
+    // If game is active, only reject if an existing player tries to change name
+    if (gameState.status !== 'LOBBY' && gameState.players[ip] && gameState.players[ip].username !== cleanName) {
+      socket.emit('error_message', { message: 'Cannot change username while match is active.' });
+      return;
+    }
+
+    const isFirstPlayer = Object.keys(gameState.players).length === 0;
 
     if (gameState.players[ip]) {
       gameState.players[ip].username = cleanName;
@@ -355,16 +421,107 @@ io.on('connection', (socket) => {
         lastRoundScore: 0,
         lastRoundDistanceKm: null,
       };
+
+      if (!gameState.hostIp || isFirstPlayer) {
+        gameState.hostIp = ip;
+      }
     }
 
-    socket.emit('username_set', { ip, username: cleanName });
-    io.emit('lobby_update', { players: getLobbyPlayers() });
-    console.log(`[LAN-Guessr] Registered IP ${ip} as "${cleanName}"`);
+    const userIsHost = (ip === gameState.hostIp);
+
+    socket.emit('username_set', {
+      ip,
+      username: cleanName,
+      isHost: userIsHost,
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+      gameStatus: gameState.status !== 'LOBBY' ? {
+        status: gameState.status,
+        currentRound: gameState.currentRound,
+        totalRounds: gameState.totalRounds,
+        hostName: gameState.players[gameState.hostIp]?.username || 'Host',
+      } : null,
+    });
+
+    io.emit('lobby_update', {
+      players: getLobbyPlayers(),
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+      gameStatus: {
+        status: gameState.status,
+        currentRound: gameState.currentRound,
+        totalRounds: gameState.totalRounds,
+      },
+    });
+    console.log(`[LAN-Guessr] Registered IP ${ip} as "${cleanName}" (Host: ${userIsHost})`);
+  });
+
+  // Event: set_region (Host only: select map pack / region)
+  socket.on('set_region', (data) => {
+    if (ip !== gameState.hostIp) {
+      socket.emit('error_message', { message: 'Only the host can change map region.' });
+      return;
+    }
+    const region = String(data?.region || 'all').toLowerCase();
+    gameState.selectedRegion = region;
+    console.log(`[LAN-Guessr] Host updated map region to: ${region}`);
+
+    io.emit('region_updated', { selectedRegion: gameState.selectedRegion });
+    io.emit('lobby_update', {
+      players: getLobbyPlayers(),
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+    });
+  });
+
+  // Event: join_game (Allows user in lobby to jump directly into ongoing game)
+  socket.on('join_game', () => {
+    let player = gameState.players[ip];
+    if (!player) {
+      socket.emit('error_message', { message: 'Please set your username first.' });
+      return;
+    }
+
+    if (gameState.status === 'LOBBY') {
+      socket.emit('error_message', { message: 'Match has not started yet. Waiting in lobby.' });
+      return;
+    }
+
+    console.log(`[LAN-Guessr] Player ${player.username} (${ip}) joining live game in status ${gameState.status}`);
+
+    const guessedCount = Object.values(gameState.players).filter((p) => p.hasGuessed).length;
+    const totalPlayers = Object.keys(gameState.players).length;
+
+    if (gameState.status === 'ROUND_ACTIVE' || gameState.status === 'ROUND_COUNTDOWN') {
+      socket.emit('round_started', {
+        round: gameState.currentRound,
+        totalRounds: gameState.totalRounds,
+        panoramaCoords: {
+          lat: gameState.roundTarget.lat,
+          lng: gameState.roundTarget.lng,
+        },
+        guessedCount,
+        totalPlayers,
+        countdownSeconds: gameState.countdownSeconds,
+        firstGuesserName: gameState.firstGuesserName,
+        isHost: (ip === gameState.hostIp),
+        hostIp: gameState.hostIp,
+      });
+    } else if (gameState.status === 'ROUND_RESULTS') {
+      socket.emit('round_results', gameState.lastRoundResults);
+    } else if (gameState.status === 'GAME_OVER') {
+      socket.emit('game_over', gameState.lastGameOver);
+    }
+
+    io.emit('player_joined', {
+      username: player.username,
+      ip: player.ip,
+      totalPlayers,
+    });
   });
 
   // Event: start_game (Lobby -> Round 1)
   socket.on('start_game', () => {
-    if (socket.data?.blocked) return;
     if (gameState.status !== 'LOBBY') return;
 
     const registeredCount = Object.keys(gameState.players).length;
@@ -373,10 +530,19 @@ io.on('connection', (socket) => {
       return;
     }
 
-    console.log(`[LAN-Guessr] Starting game with ${registeredCount} players!`);
+    console.log(`[LAN-Guessr] Starting game with ${registeredCount} players! Region filter: ${gameState.selectedRegion}`);
+
+    // Filter locations by selected region if applicable
+    let pool = allLocations;
+    if (gameState.selectedRegion && gameState.selectedRegion !== 'all') {
+      const filtered = allLocations.filter((l) => l.region === gameState.selectedRegion);
+      if (filtered.length >= gameState.totalRounds) {
+        pool = filtered;
+      }
+    }
 
     // Shuffle and pick 10 locations
-    const shuffled = shuffleArray(allLocations);
+    const shuffled = shuffleArray(pool);
     gameState.selectedLocations = shuffled.slice(0, gameState.totalRounds);
 
     // Reset scores
@@ -392,9 +558,96 @@ io.on('connection', (socket) => {
     startRound(1);
   });
 
+  // Event: stop_game (Host only: stop match at any time and return to lobby)
+  socket.on('stop_game', () => {
+    if (ip !== gameState.hostIp) {
+      socket.emit('error_message', { message: 'Only the host can stop the game.' });
+      return;
+    }
+
+    console.log(`[LAN-Guessr] Host (${gameState.players[ip]?.username || ip}) stopped the match.`);
+    if (gameState.countdownInterval) {
+      clearInterval(gameState.countdownInterval);
+      gameState.countdownInterval = null;
+    }
+
+    gameState.status = 'LOBBY';
+    gameState.currentRound = 0;
+    gameState.selectedLocations = [];
+    gameState.roundTarget = null;
+    gameState.countdownSeconds = null;
+    gameState.firstGuesserName = null;
+    gameState.lastRoundResults = null;
+    gameState.lastGameOver = null;
+
+    for (const p of Object.values(gameState.players)) {
+      p.totalScore = 0;
+      p.currentPin = null;
+      p.lockedGuess = null;
+      p.hasGuessed = false;
+      p.lastRoundScore = 0;
+      p.lastRoundDistanceKm = null;
+    }
+
+    io.emit('game_stopped', {
+      message: 'The host has stopped the game. Returned to Lobby.',
+      players: getLobbyPlayers(),
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+    });
+    io.emit('return_to_lobby', {
+      players: getLobbyPlayers(),
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+    });
+  });
+
+  // Event: leave_game (Any player can return to lobby from active match)
+  socket.on('leave_game', () => {
+    const player = gameState.players[ip];
+    const username = player?.username || 'A player';
+    console.log(`[LAN-Guessr] Player ${username} (${ip}) chose to leave match to lobby.`);
+
+    const wasHost = (ip === gameState.hostIp);
+    delete gameState.players[ip];
+
+    if (wasHost) {
+      gameState.hostIp = Object.keys(gameState.players)[0] || null;
+    }
+
+    socket.emit('return_to_lobby', {
+      players: getLobbyPlayers(),
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+      status: gameState.status,
+      currentRound: gameState.currentRound,
+    });
+
+    io.emit('player_left', {
+      username,
+      ip,
+      remainingCount: Object.keys(gameState.players).length,
+      hostIp: gameState.hostIp,
+    });
+
+    io.emit('lobby_update', {
+      players: getLobbyPlayers(),
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+      gameStatus: {
+        status: gameState.status,
+        currentRound: gameState.currentRound,
+        totalRounds: gameState.totalRounds,
+      },
+    });
+
+    if (gameState.status === 'ROUND_ACTIVE' || gameState.status === 'ROUND_COUNTDOWN') {
+      checkAllGuessed();
+    }
+  });
+
   // Event: update_pin (Draft pin before locking)
   socket.on('update_pin', (data) => {
-    if (socket.data?.blocked) return;
     if (gameState.status !== 'ROUND_ACTIVE' && gameState.status !== 'ROUND_COUNTDOWN') return;
 
     const player = gameState.players[ip];
@@ -409,7 +662,6 @@ io.on('connection', (socket) => {
 
   // Event: lock_guess (Final guess for round)
   socket.on('lock_guess', (data) => {
-    if (socket.data?.blocked) return;
     if (gameState.status !== 'ROUND_ACTIVE' && gameState.status !== 'ROUND_COUNTDOWN') return;
 
     const player = gameState.players[ip];
@@ -473,23 +725,12 @@ io.on('connection', (socket) => {
       }, 1000);
     }
 
-    // Check if ALL registered or connected players have now guessed
-    const connectedPlayers = Object.values(gameState.players).filter((p) => p.connected);
-    const allGuessed = Object.values(gameState.players).every((p) => p.hasGuessed);
-    const allConnectedGuessed = connectedPlayers.length > 0 && connectedPlayers.every((p) => p.hasGuessed);
-    if (allGuessed || allConnectedGuessed) {
-      console.log('[LAN-Guessr] All registered/connected players have guessed! Ending round immediately.');
-      if (gameState.countdownInterval) {
-        clearInterval(gameState.countdownInterval);
-        gameState.countdownInterval = null;
-      }
-      endRound();
-    }
+    // Check if ALL registered players have now guessed
+    checkAllGuessed();
   });
 
   // Event: next_round (From ROUND_RESULTS to next round or GAME_OVER)
   socket.on('next_round', () => {
-    if (socket.data?.blocked) return;
     if (gameState.status !== 'ROUND_RESULTS') return;
 
     if (gameState.currentRound < gameState.totalRounds) {
@@ -504,7 +745,7 @@ io.on('connection', (socket) => {
         totalScore: p.totalScore,
       }));
 
-      const payload = { leaderboard };
+      const payload = { leaderboard, hostIp: gameState.hostIp };
       gameState.lastGameOver = payload;
       console.log('[LAN-Guessr] Game Over! Final Standings:', leaderboard);
       io.emit('game_over', payload);
@@ -513,7 +754,6 @@ io.on('connection', (socket) => {
 
   // Event: reset_to_lobby (Reset back to lobby after game over)
   socket.on('reset_to_lobby', () => {
-    if (socket.data?.blocked) return;
     if (gameState.status !== 'GAME_OVER' && gameState.status !== 'ROUND_RESULTS') return;
 
     console.log('[LAN-Guessr] Resetting match to LOBBY. New players can now join.');
@@ -540,40 +780,54 @@ io.on('connection', (socket) => {
       p.lastRoundDistanceKm = null;
     }
 
-    // Unblock any connected sockets that were waiting on match_locked screen
-    for (const [id, s] of io.of('/').sockets) {
-      if (s.data?.blocked) {
-        s.data.blocked = false;
-        const clientIp = getClientIp(s);
-        if (!gameState.players[clientIp]) {
-          s.emit('prompt_username', { ip: clientIp, currentUsername: null });
-        }
-      }
-    }
-
-    io.emit('lobby_update', { players: getLobbyPlayers() });
-    io.emit('return_to_lobby', { players: getLobbyPlayers() });
+    io.emit('lobby_update', {
+      players: getLobbyPlayers(),
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+    });
+    io.emit('return_to_lobby', {
+      players: getLobbyPlayers(),
+      hostIp: gameState.hostIp,
+      selectedRegion: gameState.selectedRegion,
+    });
   });
 
-  // Disconnection handler
+  // Disconnection handler: "when a player is not playing at the time delete his name"
   socket.on('disconnect', () => {
     console.log(`[LAN-Guessr] Socket disconnected: ${socket.id} (IP: ${ip})`);
     if (gameState.players[ip] && gameState.players[ip].socketId === socket.id) {
-      gameState.players[ip].connected = false;
+      const username = gameState.players[ip].username;
+      const wasHost = (ip === gameState.hostIp);
 
-      if (gameState.status === 'LOBBY') {
-        io.emit('lobby_update', { players: getLobbyPlayers() });
-      } else if (gameState.status === 'ROUND_ACTIVE' || gameState.status === 'ROUND_COUNTDOWN') {
-        // If remaining connected players have all guessed, advance
-        const activePlayers = Object.values(gameState.players).filter((p) => p.connected);
-        if (activePlayers.length > 0 && activePlayers.every((p) => p.hasGuessed)) {
-          console.log('[LAN-Guessr] All remaining connected players have guessed.');
-          if (gameState.countdownInterval) {
-            clearInterval(gameState.countdownInterval);
-            gameState.countdownInterval = null;
-          }
-          endRound();
-        }
+      // User requirement: delete inactive / disconnected player's name
+      delete gameState.players[ip];
+
+      if (wasHost) {
+        gameState.hostIp = Object.keys(gameState.players)[0] || null;
+      }
+
+      console.log(`[LAN-Guessr] Deleted inactive player ${username} (${ip}). Remaining players: ${Object.keys(gameState.players).length}`);
+
+      io.emit('player_left', {
+        username,
+        ip,
+        remainingCount: Object.keys(gameState.players).length,
+        hostIp: gameState.hostIp,
+      });
+
+      io.emit('lobby_update', {
+        players: getLobbyPlayers(),
+        hostIp: gameState.hostIp,
+        selectedRegion: gameState.selectedRegion,
+        gameStatus: {
+          status: gameState.status,
+          currentRound: gameState.currentRound,
+          totalRounds: gameState.totalRounds,
+        },
+      });
+
+      if (gameState.status === 'ROUND_ACTIVE' || gameState.status === 'ROUND_COUNTDOWN') {
+        checkAllGuessed();
       }
     }
   });

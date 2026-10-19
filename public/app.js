@@ -231,6 +231,10 @@ const state = {
   serverJoinUrl: '',
   autoAdvanceInterval: null,
   autoAdvanceSeconds: 15,
+  isHost: false,
+  hostIp: null,
+  selectedRegion: 'all',
+  gameStatus: null,
 };
 
 // Check for mockIp query param for multi-tab testing on 1 PC
@@ -275,6 +279,77 @@ function switchView(targetViewId) {
     setTimeout(() => guessMap.invalidateSize(), 150);
   } else if (targetViewId === 'view-results' && resultsMap) {
     setTimeout(() => resultsMap.invalidateSize(), 150);
+  }
+}
+
+// Host & Match Management UI Helpers
+function updateHostUI() {
+  const hostBadge = document.getElementById('hud-host-badge');
+  if (hostBadge) {
+    if (state.isHost) hostBadge.classList.remove('hidden');
+    else hostBadge.classList.add('hidden');
+  }
+
+  const stopBtnHud = document.getElementById('hud-btn-stop-game');
+  if (stopBtnHud) {
+    if (state.isHost) stopBtnHud.classList.remove('hidden');
+    else stopBtnHud.classList.add('hidden');
+  }
+
+  const stopBtnResults = document.getElementById('results-btn-stop-game');
+  if (stopBtnResults) {
+    if (state.isHost) stopBtnResults.classList.remove('hidden');
+    else stopBtnResults.classList.add('hidden');
+  }
+
+  const regionSelect = document.getElementById('lobby-region-select');
+  if (regionSelect) {
+    regionSelect.disabled = !state.isHost;
+    if (state.selectedRegion) regionSelect.value = state.selectedRegion;
+  }
+
+  const regionDisplay = document.getElementById('lobby-region-display');
+  if (regionDisplay && state.selectedRegion) {
+    const regionNames = {
+      all: 'Worldwide (All 110+ Locations)',
+      asia: 'Asia Map (45+ Locations)',
+      africa: 'Africa Map (27+ Locations)',
+      europe: 'Europe Map (22+ Locations)',
+      americas: 'Americas Map (14+ Locations)',
+    };
+    regionDisplay.textContent = regionNames[state.selectedRegion] || state.selectedRegion.toUpperCase();
+  }
+
+  const btnStart = document.getElementById('btn-start-game');
+  if (btnStart) {
+    const spanText = btnStart.querySelector('span');
+    if (state.isHost) {
+      btnStart.disabled = false;
+      btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
+      if (spanText) spanText.textContent = 'Commence 10-Round Match';
+    } else {
+      btnStart.disabled = true;
+      btnStart.classList.add('opacity-50', 'cursor-not-allowed');
+      if (spanText) spanText.textContent = 'Waiting for Host to Start...';
+    }
+  }
+}
+
+function updateLobbyGameStatus(gameStatus) {
+  state.gameStatus = gameStatus;
+  const card = document.getElementById('lobby-in-progress-card');
+  const statusText = document.getElementById('lobby-match-status-text');
+  const hostText = document.getElementById('lobby-match-host-text');
+  const btnStart = document.getElementById('btn-start-game');
+
+  if (gameStatus && gameStatus.status && gameStatus.status !== 'LOBBY') {
+    if (card) card.classList.remove('hidden');
+    if (statusText) statusText.textContent = `Round ${gameStatus.currentRound} of ${gameStatus.totalRounds || 10} in Progress`;
+    if (hostText) hostText.textContent = `Host: ${gameStatus.hostName || 'Operative'} 👑`;
+    if (btnStart) btnStart.classList.add('hidden');
+  } else {
+    if (card) card.classList.add('hidden');
+    if (btnStart) btnStart.classList.remove('hidden');
   }
 }
 
@@ -351,23 +426,6 @@ function initGuessMap() {
       guessMarker = L.marker([lat, lng], { icon: createTacticalPinIcon() }).addTo(guessMap);
     } else {
       guessMarker.setLatLng([lat, lng]);
-    }
-
-    // Identify nearest landmark from 400+ world cities
-    if (typeof window.findNearestCity === 'function') {
-      const nearest = window.findNearestCity(lat, lng);
-      if (nearest) {
-        const panel = document.getElementById('closest-landmark-panel');
-        const nameEl = document.getElementById('closest-landmark-name');
-        const distEl = document.getElementById('closest-landmark-dist');
-
-        if (panel) panel.classList.add('active');
-        if (nameEl) nameEl.textContent = `${nearest.city}, ${nearest.country}`;
-        if (distEl) {
-          distEl.textContent = `${nearest.distanceKm.toLocaleString()} km`;
-          distEl.classList.remove('hidden');
-        }
-      }
     }
 
     // Enable lock guess button
@@ -531,8 +589,48 @@ document.getElementById('btn-change-username')?.addEventListener('click', () => 
   switchView('view-username');
 });
 
+// Region Selector in Lobby
+document.getElementById('lobby-region-select')?.addEventListener('change', (e) => {
+  Sound.click();
+  const region = e.target.value;
+  state.selectedRegion = region;
+  socket.emit('set_region', { region });
+});
+
+// Join In-Progress Match Button in Lobby
+document.getElementById('btn-join-in-progress')?.addEventListener('click', () => {
+  Sound.click();
+  socket.emit('join_game');
+});
+
+// Host Stop Game Buttons (HUD & Results)
+document.getElementById('hud-btn-stop-game')?.addEventListener('click', () => {
+  Sound.click();
+  if (confirm('Stop the match and return all players to the lobby?')) {
+    socket.emit('stop_game');
+  }
+});
+document.getElementById('results-btn-stop-game')?.addEventListener('click', () => {
+  Sound.click();
+  if (confirm('Stop the match and return all players to the lobby?')) {
+    socket.emit('stop_game');
+  }
+});
+
+// Player Leave to Lobby Button
+document.getElementById('hud-btn-leave-game')?.addEventListener('click', () => {
+  Sound.click();
+  if (confirm('Leave match and return to the lobby?')) {
+    socket.emit('leave_game');
+  }
+});
+
 // Start Game Button in Lobby
 document.getElementById('btn-start-game')?.addEventListener('click', () => {
+  if (!state.isHost) {
+    showToast('Only the host can commence the match.', 'warning');
+    return;
+  }
   Sound.fanfare();
   socket.emit('start_game');
 });
@@ -635,6 +733,12 @@ function renderRoundResults(data) {
   state.currentRound = data.round;
   state.totalRounds = data.totalRounds;
 
+  if (data.hostIp) {
+    state.hostIp = data.hostIp;
+    state.isHost = (state.myIp === data.hostIp);
+    updateHostUI();
+  }
+
   // Find my updated score
   const myResult = (data.results || []).find((r) => r.username === state.myUsername || r.ip === state.myIp);
   if (myResult) {
@@ -647,6 +751,20 @@ function renderRoundResults(data) {
   // Populate Header
   document.getElementById('results-round-num').textContent = data.round;
   document.getElementById('results-target-title').textContent = data.target?.label || 'Target Location';
+
+  // Render Closest Guesser Banner
+  const closestCard = document.getElementById('closest-guesser-card');
+  if (data.closestPlayer && closestCard) {
+    closestCard.classList.remove('hidden');
+    const uEl = document.getElementById('closest-guesser-username');
+    const dEl = document.getElementById('closest-guesser-distance');
+    const sEl = document.getElementById('closest-guesser-score');
+    if (uEl) uEl.textContent = data.closestPlayer.username;
+    if (dEl) dEl.textContent = `${data.closestPlayer.distanceKm.toLocaleString()} km away`;
+    if (sEl) sEl.textContent = `+${data.closestPlayer.roundScore.toLocaleString()} pts`;
+  } else if (closestCard) {
+    closestCard.classList.add('hidden');
+  }
 
   // Next round button label
   const btnNext = document.getElementById('btn-next-round-text');
@@ -681,6 +799,7 @@ function renderRoundResults(data) {
       .map((r, idx) => {
         const isMe = r.username === state.myUsername || r.ip === state.myIp;
         const isWinner = r.roundScore > 0 && r.roundScore === maxRoundScore;
+        const isClosest = data.closestPlayer && r.username === data.closestPlayer.username;
 
         let ratingBadge = '';
         if (r.distanceKm !== null) {
@@ -700,9 +819,10 @@ function renderRoundResults(data) {
               </span>
             </td>
             <td class="py-3 px-2">
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="font-bold text-slate-100">${r.username}</span>
                 ${isMe ? '<span class="text-[9px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-mono border border-cyan-500/30">YOU</span>' : ''}
+                ${isClosest ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono border border-amber-500/40 font-black">🎯 CLOSEST</span>' : ''}
                 ${isWinner ? '<span class="text-[10px] text-amber-400 font-bold" title="Round Winner">👑</span>' : ''}
               </div>
               <div class="text-[10px] text-slate-400 font-mono">${r.ip}</div>
@@ -770,24 +890,38 @@ function renderRoundResults(data) {
       bounds.extend(guessLatLng);
 
       const isMe = player.username === state.myUsername || player.ip === state.myIp;
+      const isClosest = data.closestPlayer && player.username === data.closestPlayer.username;
 
       const guessIcon = L.divIcon({
         className: 'marker-guess',
         html: `
-          <div class="marker-guess-pin" style="${isMe ? 'background: #06b6d4; transform: scale(1.15); box-shadow: 0 0 15px rgba(6,182,212,0.8);' : 'background: #64748b;'}">
-            📍
+          <div class="marker-guess-pin" style="${
+            isClosest
+              ? 'background: #f59e0b; transform: scale(1.3); box-shadow: 0 0 20px rgba(245,158,11,0.9);'
+              : isMe
+              ? 'background: #06b6d4; transform: scale(1.15); box-shadow: 0 0 15px rgba(6,182,212,0.8);'
+              : 'background: #64748b;'
+          }">
+            ${isClosest ? '🎯' : '📍'}
           </div>
-          <div class="marker-guess-label" style="${isMe ? 'border-color: #06b6d4; color: #67e8f9; background: #090d16;' : ''}">
-            ${player.username}
+          <div class="marker-guess-label" style="${
+            isClosest
+              ? 'border-color: #f59e0b; color: #fde68a; background: #090d16; font-weight: 900;'
+              : isMe
+              ? 'border-color: #06b6d4; color: #67e8f9; background: #090d16;'
+              : ''
+          }">
+            ${player.username}${isClosest ? ' 🎯' : ''}
           </div>
         `,
-        iconSize: [60, 40],
-        iconAnchor: [30, 16],
+        iconSize: isClosest ? [80, 45] : [60, 40],
+        iconAnchor: isClosest ? [40, 18] : [30, 16],
       });
 
       const pMarker = L.marker(guessLatLng, { icon: guessIcon }).addTo(resultsLayerGroup);
       pMarker.bindPopup(`
         <div class="p-1.5 font-sans">
+          ${isClosest ? '<div class="text-[10px] uppercase font-black text-amber-400">🎯 Closest Guess of the Round</div>' : ''}
           <div class="text-sm font-black text-white">${player.username}</div>
           <div class="text-xs text-slate-300 mt-1">Distance: <b class="text-amber-400 font-mono">${player.distanceKm} km</b></div>
           <div class="text-xs text-slate-300">Round Score: <b class="text-emerald-400 font-mono">+${player.roundScore} pts</b></div>
@@ -897,9 +1031,12 @@ function renderGameOver(data) {
 // 8. SOCKET.IO EVENT CONTRACT
 // ============================================================
 
-// Prompt Username on connect during LOBBY
+// Prompt Username on connect
 socket.on('prompt_username', (data) => {
   state.myIp = data.ip;
+  if (data.isHost !== undefined) state.isHost = data.isHost;
+  if (data.hostIp) state.hostIp = data.hostIp;
+  if (data.selectedRegion) state.selectedRegion = data.selectedRegion;
   const badge = document.getElementById('detected-ip-badge');
   if (badge) {
     badge.textContent = mockIp ? `${data.ip} (Mocked)` : data.ip;
@@ -907,6 +1044,10 @@ socket.on('prompt_username', (data) => {
   const input = document.getElementById('input-username');
   if (input && !input.value) {
     input.value = getRandomCallsign();
+  }
+  updateHostUI();
+  if (data.inProgress && data.gameStatus) {
+    updateLobbyGameStatus(data.gameStatus);
   }
   switchView('view-username');
 });
@@ -916,6 +1057,9 @@ socket.on('session_restored', (data) => {
   state.myIp = data.ip;
   state.myUsername = data.username;
   state.totalScore = data.totalScore || 0;
+  if (data.isHost !== undefined) state.isHost = data.isHost;
+  if (data.hostIp) state.hostIp = data.hostIp;
+  if (data.selectedRegion) state.selectedRegion = data.selectedRegion;
 
   const nameEl = document.getElementById('lobby-my-name');
   if (nameEl) nameEl.textContent = state.myUsername;
@@ -923,6 +1067,8 @@ socket.on('session_restored', (data) => {
   const badge = document.getElementById('detected-ip-badge');
   if (badge) badge.textContent = mockIp ? `${data.ip} (Mocked)` : data.ip;
 
+  updateHostUI();
+  updateLobbyGameStatus(data.gameStatus || null);
   switchView('view-lobby');
   fetchLanInfo();
 });
@@ -931,16 +1077,60 @@ socket.on('session_restored', (data) => {
 socket.on('username_set', (data) => {
   state.myIp = data.ip;
   state.myUsername = data.username;
+  if (data.isHost !== undefined) state.isHost = data.isHost;
+  if (data.hostIp) state.hostIp = data.hostIp;
+  if (data.selectedRegion) state.selectedRegion = data.selectedRegion;
 
   const nameEl = document.getElementById('lobby-my-name');
   if (nameEl) nameEl.textContent = state.myUsername;
 
+  updateHostUI();
+  updateLobbyGameStatus(data.gameStatus || null);
   showToast(`Callsign Confirmed: ${data.username}`, 'success');
   switchView('view-lobby');
   fetchLanInfo();
 });
 
-// Match Locked for unrecognized IPs
+// Region Updated Broadcast
+socket.on('region_updated', (data) => {
+  state.selectedRegion = data.selectedRegion;
+  updateHostUI();
+  showToast(`Target Region: ${data.selectedRegion.toUpperCase()}`, 'info');
+});
+
+// Game Stopped by Host
+socket.on('game_stopped', (data) => {
+  Sound.pop();
+  showToast(data.message || 'Host stopped the game. Returned to Lobby.', 'warning');
+  if (state.autoAdvanceInterval) clearInterval(state.autoAdvanceInterval);
+  state.autoAdvanceInterval = null;
+  if (data.hostIp) {
+    state.hostIp = data.hostIp;
+    state.isHost = (state.myIp === data.hostIp);
+  }
+  state.selectedRegion = data.selectedRegion || 'all';
+  updateHostUI();
+  updateLobbyGameStatus(null);
+  switchView('view-lobby');
+  fetchLanInfo();
+});
+
+// Player Left Match
+socket.on('player_left', (data) => {
+  showToast(`${data.username} left the match (${data.remainingCount} active)`, 'info');
+  if (data.hostIp) {
+    state.hostIp = data.hostIp;
+    state.isHost = (state.myIp === data.hostIp);
+    updateHostUI();
+  }
+});
+
+// Player Joined Match
+socket.on('player_joined', (data) => {
+  showToast(`⚡ ${data.username} joined the match!`, 'success');
+});
+
+// Match Locked (legacy / fallback)
 socket.on('match_locked', (data) => {
   const reasonEl = document.getElementById('locked-reason-text');
   if (reasonEl && data.reason) reasonEl.textContent = data.reason;
@@ -953,6 +1143,20 @@ socket.on('match_locked', (data) => {
 
 // Lobby Player List Broadcast
 socket.on('lobby_update', (data) => {
+  if (data.hostIp) {
+    state.hostIp = data.hostIp;
+    state.isHost = (state.myIp === data.hostIp);
+  }
+  if (data.selectedRegion) {
+    state.selectedRegion = data.selectedRegion;
+  }
+  updateHostUI();
+  if (data.gameStatus) {
+    updateLobbyGameStatus(data.gameStatus);
+  } else {
+    updateLobbyGameStatus(null);
+  }
+
   const grid = document.getElementById('lobby-players-grid');
   const countBadge = document.getElementById('player-count-badge');
   if (!grid) return;
@@ -987,9 +1191,10 @@ socket.on('lobby_update', (data) => {
               ${p.username ? p.username.substring(0, 2).toUpperCase() : '??'}
             </div>
             <div>
-              <div class="font-bold text-sm text-white flex items-center gap-1.5">
+              <div class="font-bold text-sm text-white flex items-center gap-1.5 flex-wrap">
                 <span>${p.username || 'Anonymous'}</span>
                 ${isMe ? '<span class="text-[9px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-mono border border-cyan-500/30">YOU</span>' : ''}
+                ${p.isHost ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono border border-amber-500/30 font-bold">HOST 👑</span>' : ''}
               </div>
               <div class="font-mono text-[11px] text-slate-400">${p.ip}</div>
             </div>
@@ -1014,20 +1219,18 @@ socket.on('round_started', (data) => {
   state.currentPin = null;
   state.hasGuessed = false;
 
+  if (data.hostIp) {
+    state.hostIp = data.hostIp;
+    state.isHost = (state.myIp === data.hostIp);
+  }
+  updateHostUI();
+
   // Update HUD
   document.getElementById('hud-round-current').textContent = data.round;
   document.getElementById('hud-round-total').textContent = state.totalRounds;
   document.getElementById('hud-guessed-status').textContent = `0 / ${data.totalPlayers || 1}`;
   document.getElementById('hud-my-score').textContent = state.totalScore;
   updateRoundDots(data.round, state.totalRounds);
-
-  // Reset Closest Landmark Panel
-  const panel = document.getElementById('closest-landmark-panel');
-  const nameEl = document.getElementById('closest-landmark-name');
-  const distEl = document.getElementById('closest-landmark-dist');
-  if (panel) panel.classList.remove('active');
-  if (nameEl) nameEl.textContent = 'Click map to pinpoint location';
-  if (distEl) distEl.classList.add('hidden');
 
   // Reset Timer Banner
   const timerBanner = document.getElementById('timer-banner');
@@ -1119,6 +1322,12 @@ socket.on('rejoin_match', (data) => {
   state.totalRounds = data.totalRounds;
   state.hasGuessed = data.hasGuessed;
 
+  if (data.hostIp) {
+    state.hostIp = data.hostIp;
+    state.isHost = (state.myIp === data.hostIp);
+  }
+  updateHostUI();
+
   showToast(`Reconnected to Round ${data.round}!`, 'success');
 
   if (data.status === 'ROUND_ACTIVE' || data.status === 'ROUND_COUNTDOWN') {
@@ -1165,21 +1374,6 @@ socket.on('rejoin_match', (data) => {
     if (state.currentPin && guessMap) {
       guessMarker = L.marker([state.currentPin.lat, state.currentPin.lng], { icon: createTacticalPinIcon() }).addTo(guessMap);
       guessMap.setView([state.currentPin.lat, state.currentPin.lng], 3);
-
-      if (typeof window.findNearestCity === 'function') {
-        const nearest = window.findNearestCity(state.currentPin.lat, state.currentPin.lng);
-        if (nearest) {
-          const panel = document.getElementById('closest-landmark-panel');
-          const nameEl = document.getElementById('closest-landmark-name');
-          const distEl = document.getElementById('closest-landmark-dist');
-          if (panel) panel.classList.add('active');
-          if (nameEl) nameEl.textContent = `${nearest.city}, ${nearest.country}`;
-          if (distEl) {
-            distEl.textContent = `${nearest.distanceKm.toLocaleString()} km`;
-            distEl.classList.remove('hidden');
-          }
-        }
-      }
     }
   } else if (data.status === 'ROUND_RESULTS' && data.lastRoundResults) {
     renderRoundResults(data.lastRoundResults);
@@ -1200,6 +1394,28 @@ socket.on('return_to_lobby', (data) => {
   state.currentPin = null;
   state.hasGuessed = false;
 
+  if (state.autoAdvanceInterval) clearInterval(state.autoAdvanceInterval);
+  state.autoAdvanceInterval = null;
+
+  if (data.hostIp) {
+    state.hostIp = data.hostIp;
+    state.isHost = (state.myIp === data.hostIp);
+  }
+  if (data.selectedRegion) {
+    state.selectedRegion = data.selectedRegion;
+  }
+  updateHostUI();
+
+  if (data.status && data.status !== 'LOBBY') {
+    updateLobbyGameStatus({
+      status: data.status,
+      currentRound: data.currentRound,
+      totalRounds: state.totalRounds,
+    });
+  } else {
+    updateLobbyGameStatus(null);
+  }
+
   const myPlayer = (data.players || []).find((p) => p.ip === state.myIp || p.username === state.myUsername);
   if (myPlayer) {
     state.myUsername = myPlayer.username;
@@ -1209,7 +1425,7 @@ socket.on('return_to_lobby', (data) => {
 
   switchView('view-lobby');
   fetchLanInfo();
-  showToast('Match concluded. Lobby reopened for new players!', 'info');
+  showToast('Lobby ready!', 'info');
 });
 
 // Error Message
