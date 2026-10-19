@@ -1,6 +1,6 @@
 /**
  * LAN-Guessr: Real-Time LAN Multiplayer Geography Guessing Game
- * Cyber-Tactical Engine: English Carto Voyager Tiles, Nearest Landmark Telemetry,
+ * Cyber-Tactical Engine: Zero-Key English ESRI World Street Map, Nearest Landmark Telemetry,
  * Custom Needle-Tip Pin Cursor, Canvas Confetti & Sound Effects
  */
 
@@ -193,21 +193,30 @@ function getRandomCallsign() {
 // 4. GLOBAL CLIENT STATE & MAP CONFIGURATION
 // ============================================================
 const MAP_TILES = {
-  // 100% in English Carto Voyager (Standard clean pastel with English labels worldwide)
-  voyager: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: 'abcd',
+  // 100% Free ESRI World Street Map (Full English country, city & road labels worldwide - Zero API Key, No Watermark)
+  street: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 19,
-    label: '🌙 Dark Mode',
+    label: '🌙 Dark',
+    isDark: false,
   },
-  // 100% in English Carto Dark Matter (Dark high-contrast tactical with English labels)
+  // Tactical Dark Mode with zero API key
   dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    subdomains: 'abcd',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 19,
-    label: '☀️ Light Mode',
+    label: '☀️ Light',
+    isDark: true,
+  },
+  // High-Resolution Satellite Imagery view (Zero API Key)
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 19,
+    label: '🗺️ Map',
+    isDark: false,
   },
 };
+// Aliases for compatibility
+MAP_TILES.voyager = MAP_TILES.street;
 
 const state = {
   myIp: null,
@@ -217,7 +226,7 @@ const state = {
   currentPin: null,      // { lat, lng } draft pin
   hasGuessed: false,
   isMapExpanded: false,
-  mapTheme: 'voyager',   // 'voyager' | 'dark'
+  mapTheme: 'street',    // 'street' | 'dark' | 'satellite'
   totalScore: 0,
   serverJoinUrl: '',
   autoAdvanceInterval: null,
@@ -316,12 +325,17 @@ function initGuessMap() {
     zoomControl: false,
   });
 
-  // Carto Voyager: 100% in English!
-  const cfg = MAP_TILES[state.mapTheme];
+  // 100% Free ESRI World Street Map (100% in English, Zero API Key!)
+  const cfg = MAP_TILES[state.mapTheme] || MAP_TILES.street;
   guessTileLayer = L.tileLayer(cfg.url, {
-    subdomains: cfg.subdomains,
     maxZoom: cfg.maxZoom,
   }).addTo(guessMap);
+
+  if (cfg.isDark) {
+    mapElement.classList.add('map-tiles-dark');
+  } else {
+    mapElement.classList.remove('map-tiles-dark');
+  }
 
   // Click handler: places needle pin & updates nearest landmark on bottom
   guessMap.on('click', (e) => {
@@ -379,10 +393,9 @@ function initResultsMap() {
     attributionControl: false,
   });
 
-  // Carto Voyager in English for results map
-  L.tileLayer(MAP_TILES.voyager.url, {
-    subdomains: MAP_TILES.voyager.subdomains,
-    maxZoom: 19,
+  // 100% Free ESRI World Street Map in English for results map (Zero API Key!)
+  L.tileLayer(MAP_TILES.street.url, {
+    maxZoom: MAP_TILES.street.maxZoom,
   }).addTo(resultsMap);
 
   resultsLayerGroup = L.layerGroup().addTo(resultsMap);
@@ -434,22 +447,35 @@ async function fetchLanInfo() {
 document.getElementById('btn-toggle-sound')?.addEventListener('click', () => Sound.toggleMute());
 document.getElementById('hud-btn-sound')?.addEventListener('click', () => Sound.toggleMute());
 
-// Switch English Map Style (Light Voyager vs Dark Matter)
-document.getElementById('btn-toggle-map-theme')?.addEventListener('click', () => {
-  Sound.click();
-  state.mapTheme = state.mapTheme === 'voyager' ? 'dark' : 'voyager';
-  const cfg = MAP_TILES[state.mapTheme];
+function applyMapTheme(themeName) {
+  state.mapTheme = themeName;
+  const cfg = MAP_TILES[state.mapTheme] || MAP_TILES.street;
 
-  if (guessMap && guessTileLayer) {
+  const guessMapEl = document.getElementById('guess-map');
+  if (guessMapEl) {
+    if (cfg.isDark) {
+      guessMapEl.classList.add('map-tiles-dark');
+    } else {
+      guessMapEl.classList.remove('map-tiles-dark');
+    }
+  }
+
+  if (guessMap && guessTileLayer && guessTileLayer._url !== cfg.url) {
     guessMap.removeLayer(guessTileLayer);
     guessTileLayer = L.tileLayer(cfg.url, {
-      subdomains: cfg.subdomains,
       maxZoom: cfg.maxZoom,
     }).addTo(guessMap);
   }
 
   const btn = document.getElementById('btn-toggle-map-theme');
   if (btn) btn.textContent = cfg.label;
+}
+
+// Switch English Map Style (Light Street vs Dark Tactical)
+document.getElementById('btn-toggle-map-theme')?.addEventListener('click', () => {
+  Sound.click();
+  const nextTheme = state.mapTheme === 'dark' ? 'street' : 'dark';
+  applyMapTheme(nextTheme);
 });
 
 // QR Modal Controls

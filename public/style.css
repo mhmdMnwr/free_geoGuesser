@@ -162,6 +162,14 @@ html, body {
   cursor: crosshair !important;
 }
 
+/* Smooth tile transitions & High-Contrast Tactical Dark Filter (Zero API Key, 100% English Labels) */
+.leaflet-tile-pane {
+  transition: filter 0.25s ease;
+}
+.map-tiles-dark .leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) saturate(75%);
+}
+
 /* Expanded State */
 #guess-map-container.expanded {
   width: 620px;
