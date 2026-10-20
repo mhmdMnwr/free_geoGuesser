@@ -19,11 +19,12 @@ async function bootstrap() {
   // Socket.IO adapter with CORS
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  // Optional static assets fallback if frontend directory is mounted
+  // Optional static assets fallback if compiled frontend dist directory is mounted/present
   const candidateFrontendDirs = [
-    path.join(process.cwd(), 'frontend'),
-    path.join(process.cwd(), '..', 'frontend'),
-    path.join(__dirname, '..', '..', 'frontend'),
+    path.join(process.cwd(), 'frontend', 'dist'),
+    path.join(process.cwd(), '..', 'frontend', 'dist'),
+    path.join(__dirname, '..', '..', 'frontend', 'dist'),
+    path.join(process.cwd(), 'dist', 'frontend'),
   ];
   for (const dir of candidateFrontendDirs) {
     if (fs.existsSync(dir)) {

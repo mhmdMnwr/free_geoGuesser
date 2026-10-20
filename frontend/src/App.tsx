@@ -49,6 +49,7 @@ type IconName =
   | "radar"
   | "settings"
   | "shield"
+  | "researcher"
 
 const iconPaths: Record<IconName, React.ReactNode> = {
   arrow: <path d="m9 18 6-6-6-6" />,
@@ -112,6 +113,15 @@ const iconPaths: Record<IconName, React.ReactNode> = {
   shield: (
     <path d="M12 3 4.5 6v5.2c0 4.6 3.2 8.2 7.5 9.8 4.3-1.6 7.5-5.2 7.5-9.8V6L12 3Z" />
   ),
+  researcher: (
+    <>
+      <path d="M12 2L2 7l10 5 10-5-10-5Z" />
+      <path d="M5 9.5v5.5c0 2 3.1 3.5 7 3.5s7-1.5 7-3.5V9.5" />
+      <path d="M20 9v5" />
+      <circle cx="16" cy="16" r="4" />
+      <path d="m19 19 3 3" />
+    </>
+  ),
 }
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
@@ -143,6 +153,7 @@ function GameButton({
   onClick,
   disabled = false,
   variant = "primary",
+  style,
 }: {
   children: React.ReactNode
   className?: string
@@ -150,12 +161,14 @@ function GameButton({
   onClick?: () => void
   disabled?: boolean
   variant?: "primary" | "ghost" | "outline"
+  style?: React.CSSProperties
 }) {
   return (
     <ButtonElement
       className={`game-button game-button--${variant} ${className} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       disabled={disabled}
       onClick={onClick}
+      style={style}
       type="button"
     >
       {icon && <Icon name={icon} />}
@@ -353,33 +366,23 @@ function ModeSelect({
       <EffectsLayer />
       <div className="ambient-grid" />
       <div className="entry-header">
-        <div className="logo">
+        <div className="logo" style={{ marginLeft: "auto" }}>
           <span className="logo-icon">
-            <Icon name="radar" size={26} />
+            <Icon name="researcher" size={26} />
           </span>
-          <span>WAYFINDER</span>
+          <span>THEgeoguesser</span>
         </div>
-        <span className="build-label">LAN MULTI-LOBBY 2.0</span>
       </div>
 
       <section className="entry-content">
-        <div className="kicker">
-          <span className="live-pulse" />
-          LOCAL AREA NETWORK PROTOCOL
-        </div>
-        <div className="entry-title" data-text="TACTICAL GEO RECON">
-          EXPLORE THE WORLD
-          <br />
-          ON YOUR LAN
-        </div>
-        <div className="entry-lead">
-          Connect with anyone on your local network. Create your own squad room, hold the Crown 👑, or join active LAN expeditions.
+        <div className="entry-title" data-text="INTERNSHIP SEARCH">
+          you should search for an internship, what are you doin?
         </div>
 
         {/* Operative Codename Input */}
-        <div className="mb-6 max-w-md w-full">
+        <div className="mt-8 mb-6 max-w-md w-full">
           <label className="block text-xs font-mono uppercase text-sky-400 mb-2 tracking-widest">
-            // OPERATIVE CODENAME
+            CODENAME
           </label>
           <input
             className="w-full bg-slate-900/90 border border-slate-700 focus:border-sky-400 rounded-lg px-4 py-3 text-slate-100 font-mono text-sm tracking-wider uppercase outline-none transition shadow-inner"
@@ -402,14 +405,10 @@ function ModeSelect({
               <Icon name="lan" size={34} />
             </span>
             <span className="mode-content">
-              <strong>LOCAL AREA NETWORK</strong>
+              <strong>MULTIPLAYER LOBBY</strong>
               <small>
-                Host or join match rooms with players on the same Wi-Fi or LAN switch.
+                Host or join match rooms with other operatives.
               </small>
-              <span className="mode-meta">
-                <i />
-                ULTRA-LOW LATENCY // ZERO CLOUD
-              </span>
             </span>
             <span className="mode-select">
               {mode === "lan" && <Icon name="check" size={18} />}
@@ -426,14 +425,10 @@ function ModeSelect({
               <Icon name="globe" size={34} />
             </span>
             <span className="mode-content">
-              <strong>LAN DIRECT LINK</strong>
+              <strong>DIRECT LINK</strong>
               <small>
-                Connect directly via host LAN IP without third-party servers.
+                Connect directly via host IP address.
               </small>
-              <span className="mode-meta">
-                <i />
-                ISOLATED & PRIVATE
-              </span>
             </span>
             <span className="mode-select">
               {mode === "lan" && <Icon name="check" size={18} />}
@@ -455,15 +450,7 @@ function ModeSelect({
         </GameButton>
       </section>
 
-      <div className="entry-footer">
-        <span>LAN DISCOVERY: ACTIVE</span>
-        <span>ENCRYPTED LOCAL PROTOCOL</span>
-      </div>
-      <div className="connection-warp">
-        <span />
-        <strong>SYNCING OPERATIVE REGISTRY</strong>
-        <i />
-      </div>
+
     </main>
   )
 }
@@ -489,19 +476,15 @@ function RoomBrowser({
       <EffectsLayer />
       <div className="ambient-grid" />
       <header className="lobby-nav">
-        <div className="logo">
-          <span className="logo-icon">
-            <Icon name="radar" size={24} />
-          </span>
-          <span>WAYFINDER</span>
-        </div>
-        <div className="nav-session">
-          <span className="live-pulse" />
-          LAN ACTIVE // OPERATIVE: {username}
-        </div>
-        <GameButton icon="back" onClick={onBack} variant="ghost">
+        <GameButton icon="back" onClick={onBack} variant="ghost" style={{ marginLeft: 0 }}>
           CHANGE CODENAME
         </GameButton>
+        <div className="logo" style={{ marginLeft: "auto" }}>
+          <span className="logo-icon">
+            <Icon name="researcher" size={24} />
+          </span>
+          <span>THEgeoguesser</span>
+        </div>
       </header>
 
       <div className="browser-content">
@@ -516,7 +499,7 @@ function RoomBrowser({
             </div>
           </div>
           <GameButton icon="plus" onClick={onCreate}>
-            + CREATE SQUAD ROOM
+            CREATE SQUAD ROOM
           </GameButton>
         </section>
 
@@ -531,7 +514,7 @@ function RoomBrowser({
           <div className="room-list">
             {lobbies.length === 0 ? (
               <div className="p-12 text-center text-slate-400 font-mono text-sm">
-                NO ACTIVE SQUADS FOUND ON LAN. CLICK "+ CREATE SQUAD ROOM" TO HOST!
+                NO ACTIVE SQUADS FOUND. CLICK "CREATE SQUAD ROOM" TO HOST!
               </div>
             ) : (
               lobbies.map((room, index) => {
@@ -579,13 +562,7 @@ function RoomBrowser({
           </div>
         </section>
 
-        <div className="browser-footer">
-          <span>
-            <i className="live-pulse" />
-            LAN DISCOVERY RUNNING
-          </span>
-          <span>MULTI-LOBBY SYNC ACTIVE</span>
-        </div>
+
       </div>
     </main>
   )
@@ -652,20 +629,15 @@ function Lobby({
       <EffectsLayer />
       <div className="ambient-grid" />
       <header className="lobby-nav">
-        <div className="logo">
-          <span className="logo-icon">
-            <Icon name="radar" size={24} />
-          </span>
-          <span>WAYFINDER</span>
-        </div>
-        <div className="nav-session">
-          <span className="live-pulse" />
-          {isHost ? "SQUAD LEADER 👑" : "OPERATIVE CONNECTED"}
-          <span className="ping">ROOM: {room.id}</span>
-        </div>
-        <GameButton icon="back" onClick={onBack} variant="ghost">
+        <GameButton icon="back" onClick={onBack} variant="ghost" style={{ marginLeft: 0 }}>
           EXIT SQUAD
         </GameButton>
+        <div className="logo" style={{ marginLeft: "auto" }}>
+          <span className="logo-icon">
+            <Icon name="researcher" size={24} />
+          </span>
+          <span>THEgeoguesser</span>
+        </div>
       </header>
 
       <div className="lobby-content">
@@ -953,10 +925,10 @@ function GameScreen({
       <header className="game-hud-top">
         <div className="game-brand">
           <span className="logo-icon">
-            <Icon name="globe" size={22} />
+            <Icon name="researcher" size={22} />
           </span>
           <span>
-            <strong>WAYFINDER</strong>
+            <strong>THEgeoguesser</strong>
             <small>ROOM: {room.id} // {room.name}</small>
           </span>
         </div>
@@ -1298,6 +1270,8 @@ export default function App() {
 
   // Create Room Modal state
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false)
+  const [createRoomError, setCreateRoomError] = useState<string | null>(null)
   const [newRoomName, setNewRoomName] = useState("")
   const [newRoomRegion, setNewRoomRegion] = useState("all")
   const [newRoomDifficulty, setNewRoomDifficulty] = useState("all")
@@ -1318,41 +1292,82 @@ export default function App() {
       .catch((err) => console.error("Client ECDH generation error:", err))
   }, [])
 
+  // Persist username changes to localStorage without severing socket
+  useEffect(() => {
+    localStorage.setItem("wayfinder_name", username)
+  }, [username])
+
   // Host heartbeat ping loop (every 2.5s) to sustain the 8s Redis watchdog TTL
   useEffect(() => {
     if (!isHost || !activeRoom) return
     const interval = setInterval(() => {
-      if (socketRef.current && activeRoom) {
+      if (socketRef.current && socketRef.current.connected && activeRoom) {
         socketRef.current.emit("host_heartbeat", { roomId: activeRoom.id })
       }
+      // Dual-channel heartbeat: also ping REST endpoint to sustain watchdog
+      fetch(`/api/lobbies/${encodeURIComponent(activeRoom.id)}/heartbeat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostId: clientId }),
+      }).catch(() => {})
     }, 2500)
     return () => clearInterval(interval)
-  }, [isHost, activeRoom?.id])
+  }, [isHost, activeRoom?.id, clientId])
 
-  // Fetch LAN info and connect socket
+  // Refresh lobbies list when browser screen is active
   useEffect(() => {
-    localStorage.setItem("wayfinder_name", username)
+    if (screen !== "browser") return
+    const fetchLobbies = () => {
+      fetch("/api/lobbies")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data.lobbies)) {
+            setLobbies(data.lobbies)
+          }
+        })
+        .catch(() => {})
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit("get_lobbies")
+      }
+    }
+    fetchLobbies()
+    const interval = setInterval(fetchLobbies, 2500)
+    return () => clearInterval(interval)
+  }, [screen])
 
+  // Connect socket on mount (never disconnect when user changes name)
+  useEffect(() => {
     fetch("/api/info")
       .then((res) => res.json())
       .then((data) => {
-        const hostName = window.location.hostname;
-        const isLocal = !hostName || hostName === "localhost" || hostName === "127.0.0.1";
-        const ipToUse = !isLocal ? hostName : (data.primaryIp || "localhost");
-        const portToUse = window.location.port || data.frontendPort || 3000;
-        setLanAddress(`${ipToUse}:${portToUse}`);
+        const hostName = window.location.hostname
+        const isLocal = !hostName || hostName === "localhost" || hostName === "127.0.0.1"
+        const ipToUse = !isLocal ? hostName : (data.primaryIp || "localhost")
+        const portToUse = window.location.port || data.frontendPort || 3000
+        setLanAddress(`${ipToUse}:${portToUse}`)
       })
       .catch(() => {})
 
-    // Connect to backend via current origin (works behind Nginx proxy)
+    // Connect using polling first then upgrade to websocket for robust proxy traversal
     const socket = io({
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       query: { clientId, isBrowser: "true" },
+      reconnectionAttempts: 10,
+      timeout: 10000,
     })
     socketRef.current = socket
 
     socket.on("connect", () => {
       socket.emit("get_lobbies")
+    })
+
+    socket.on("connect_error", (err: any) => {
+      console.warn("Socket connection error:", err)
+    })
+
+    socket.on("error_message", (data: any) => {
+      console.error("Server error message:", data)
+      alert(data.message || "Squad protocol error.")
     })
 
     socket.on("lobbies_list", (list: Room[]) => {
@@ -1377,6 +1392,7 @@ export default function App() {
       setRoomPlayers(data.players || [])
       setTotalRounds(data.totalRounds || 5)
       setScreen("lobby")
+      setShowCreateModal(false)
 
       // Derive in-memory AES-256-GCM session key via ECDH shared secret
       if (data.serverPublicKey && ecdhKeyPairRef.current) {
@@ -1447,30 +1463,144 @@ export default function App() {
     return () => {
       socket.disconnect()
     }
-  }, [username])
+  }, [])
 
-  function handleCreateRoomSubmit() {
-    if (!socketRef.current) return
+  async function handleCreateRoomSubmit() {
     const name = newRoomName.trim() || `${username}'S SQUAD`
-    socketRef.current.emit("create_lobby", {
+    setIsCreatingRoom(true)
+    setCreateRoomError(null)
+
+    const payload = {
       name,
       username,
-      clientPublicKey: clientPublicKeyRef.current || clientPublicKey,
+      clientPublicKey: clientPublicKeyRef.current || clientPublicKey || "",
       selectedRegion: newRoomRegion,
       difficulty: newRoomDifficulty,
       totalRounds: newRoomRounds,
       countdownDuration: newRoomDuration,
-    })
-    setShowCreateModal(false)
+      rounds: newRoomRounds,
+      duration: newRoomDuration,
+      region: newRoomRegion,
+    }
+
+    // Emit via WebSocket
+    if (socketRef.current) {
+      socketRef.current.emit("create_lobby", payload)
+    }
+
+    // Call REST endpoint as primary/fallback to guarantee room is registered
+    try {
+      const res = await fetch("/api/lobbies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setActiveRoom({
+          id: data.roomId,
+          name: data.roomName || name,
+          hostName: username,
+          hostIp: lanAddress || "127.0.0.1",
+          playerCount: data.players?.length || 1,
+          maxPlayers: 8,
+          selectedRegion: data.selectedRegion || newRoomRegion,
+          difficulty: data.difficulty || newRoomDifficulty,
+          totalRounds: data.totalRounds || newRoomRounds,
+          status: data.status || "LOBBY",
+          ping: 3,
+        })
+        setIsHost(true)
+        setRoomPlayers(data.players || [])
+        setTotalRounds(data.totalRounds || newRoomRounds)
+        setScreen("lobby")
+        setShowCreateModal(false)
+
+        if (socketRef.current) {
+          socketRef.current.emit("join_lobby", {
+            roomId: data.roomId,
+            username,
+            clientPublicKey: clientPublicKeyRef.current || clientPublicKey,
+          })
+        }
+
+        if (data.serverPublicKey && ecdhKeyPairRef.current) {
+          try {
+            const derived = await deriveAesGcmKey(data.serverPublicKey, ecdhKeyPairRef.current.privateKey)
+            setAesKey(derived)
+            aesKeyRef.current = derived
+          } catch (err) {
+            console.error("ECDH key derivation failed:", err)
+          }
+        }
+      } else {
+        const errJson = await res.json().catch(() => ({}))
+        setCreateRoomError(errJson.message || "Failed to create expedition room.")
+      }
+    } catch (err: any) {
+      console.warn("REST create room error:", err)
+      // Check if socket already created the room and transitioned
+      setTimeout(() => {
+        if (!activeRoom) {
+          setCreateRoomError("Network error: Could not reach room service.")
+        }
+      }, 600)
+    } finally {
+      setIsCreatingRoom(false)
+    }
   }
 
-  function handleJoinRoom(room: Room) {
-    if (!socketRef.current) return
-    socketRef.current.emit("join_lobby", {
-      roomId: room.id,
-      username,
-      clientPublicKey: clientPublicKeyRef.current || clientPublicKey,
-    })
+  async function handleJoinRoom(room: Room) {
+    if (socketRef.current) {
+      socketRef.current.emit("join_lobby", {
+        roomId: room.id,
+        username,
+        clientPublicKey: clientPublicKeyRef.current || clientPublicKey,
+      })
+    }
+
+    try {
+      const res = await fetch("/api/lobbies/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId: room.id,
+          username,
+          clientPublicKey: clientPublicKeyRef.current || clientPublicKey,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setActiveRoom({
+          id: data.roomId,
+          name: data.roomName || room.name,
+          hostName: room.hostName,
+          hostIp: room.hostIp,
+          playerCount: data.players?.length || room.playerCount,
+          maxPlayers: 8,
+          selectedRegion: data.selectedRegion || room.selectedRegion,
+          difficulty: data.difficulty || room.difficulty,
+          totalRounds: data.totalRounds || room.totalRounds,
+          status: data.status || room.status,
+          ping: 3,
+        })
+        setIsHost(Boolean(data.isHost))
+        setRoomPlayers(data.players || [])
+        setTotalRounds(data.totalRounds || room.totalRounds)
+        setScreen("lobby")
+
+        if (socketRef.current) {
+          socketRef.current.emit("join_lobby", {
+            roomId: data.roomId,
+            username,
+            clientPublicKey: clientPublicKeyRef.current || clientPublicKey,
+          })
+        }
+      }
+    } catch (err) {
+      console.warn("REST join room error:", err)
+    }
   }
 
   function handleLeaveRoom() {
@@ -1566,6 +1696,7 @@ export default function App() {
           onBack={() => setScreen("select")}
           onCreate={() => {
             setNewRoomName(`${username}'S SQUAD`)
+            setCreateRoomError(null)
             setShowCreateModal(true)
           }}
           onJoin={handleJoinRoom}
@@ -1697,12 +1828,18 @@ export default function App() {
               </div>
             </div>
 
+            {createRoomError && (
+              <div className="p-3 my-3 text-xs font-mono text-rose-400 bg-rose-950/70 border border-rose-800 rounded">
+                ⚠ {createRoomError}
+              </div>
+            )}
+
             <div className="modal-actions">
-              <GameButton onClick={() => setShowCreateModal(false)} variant="ghost">
+              <GameButton disabled={isCreatingRoom} onClick={() => setShowCreateModal(false)} variant="ghost">
                 CANCEL
               </GameButton>
-              <GameButton icon="crown" onClick={handleCreateRoomSubmit} variant="primary">
-                CREATE & TAKE CROWN 👑
+              <GameButton disabled={isCreatingRoom} icon="crown" onClick={handleCreateRoomSubmit} variant="primary">
+                {isCreatingRoom ? "CREATING EXPEDITION..." : "CREATE & TAKE CROWN 👑"}
               </GameButton>
             </div>
           </div>

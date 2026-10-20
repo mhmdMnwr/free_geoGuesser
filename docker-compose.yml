@@ -1,6 +1,6 @@
 services:
   # Edge Gateway & Reverse Proxy (Pure LAN Ingress)
-  # Public Host Ports: 3000 (UI), 5000 (API & WebSockets)
+  # Public Host Port: 3000 (UI)
   # Internal IP: 172.28.0.10
   gateway:
     build:
@@ -12,12 +12,12 @@ services:
         ipv4_address: 172.28.0.10
     ports:
       - "3000:80"
-      - "5000:80"
     depends_on:
       - backend
     restart: unless-stopped
 
   # Core Game Engine, Lobby & Media Microservice Cluster (NestJS)
+  # Public Host Port: 5000 (Backend API & Socket.IO WebSockets)
   # Internal IP: 172.28.0.11
   backend:
     build:
@@ -39,6 +39,8 @@ services:
       REDIS_HOST: 172.28.0.15
       REDIS_PORT: 6379
       INTERNAL_CLUSTER_SECRET: lan_guessr_cluster_secret_e9f3b8a1
+    ports:
+      - "5000:5000"
     depends_on:
       geo-db:
         condition: service_healthy

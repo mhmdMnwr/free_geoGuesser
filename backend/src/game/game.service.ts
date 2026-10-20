@@ -343,7 +343,8 @@ export class GameService implements OnModuleInit {
     const isHostValid =
       currentHost &&
       (currentHost.connected === true ||
-        (currentHost.lastDisconnectedAt &&
+        (connected.length === 0 &&
+          currentHost.lastDisconnectedAt &&
           Date.now() - currentHost.lastDisconnectedAt < 30000));
 
     if (!isHostValid) {
@@ -409,9 +410,6 @@ export class GameService implements OnModuleInit {
     };
 
     server.to(targetRoom.id).emit('lobby_update', payload);
-    if (targetRoom.id === 'LAN-01') {
-      server.emit('lobby_update', payload);
-    }
     server.emit('lobbies_list', this.getLobbiesList());
   }
 
@@ -473,9 +471,6 @@ export class GameService implements OnModuleInit {
     };
 
     server.to(targetRoom.id).emit('round_started', payload);
-    if (targetRoom.id === 'LAN-01') {
-      server.emit('round_started', payload);
-    }
   }
 
   endRound(server: Server, room?: GameRoom) {
@@ -572,9 +567,6 @@ export class GameService implements OnModuleInit {
     );
 
     server.to(targetRoom.id).emit('round_results', payload);
-    if (targetRoom.id === 'LAN-01') {
-      server.emit('round_results', payload);
-    }
   }
 
   checkAllGuessed(server: Server, room?: GameRoom) {
@@ -621,7 +613,7 @@ export class GameService implements OnModuleInit {
       (targetRoom.hostIp && senderId === targetRoom.hostIp);
 
     if (!isAuthorized) {
-      return { success: false, error: 'Only the Squad Leader (Crown) can commence the expedition.' };
+      return { success: false, error: 'Only the host (Squad Leader) can start the game.' };
     }
 
     this.logger.log(
@@ -678,7 +670,7 @@ export class GameService implements OnModuleInit {
       (targetRoom.hostIp && senderId === targetRoom.hostIp);
 
     if (!isAuthorized) {
-      return { success: false, error: 'Only the Squad Leader can abort the expedition.' };
+      return { success: false, error: 'Only the host (Squad Leader) can stop the game.' };
     }
 
     this.logger.log(`[Room ${targetRoom.id}] Host stopped match.`);
@@ -720,10 +712,6 @@ export class GameService implements OnModuleInit {
 
     server.to(targetRoom.id).emit('game_stopped', payload);
     server.to(targetRoom.id).emit('return_to_lobby', payload);
-    if (targetRoom.id === 'LAN-01') {
-      server.emit('game_stopped', payload);
-      server.emit('return_to_lobby', payload);
-    }
     return { success: true };
   }
 
@@ -755,9 +743,6 @@ export class GameService implements OnModuleInit {
       this.logger.log(`[Room ${targetRoom.id}] Game Over Standings:`, leaderboard);
 
       server.to(targetRoom.id).emit('game_over', payload);
-      if (targetRoom.id === 'LAN-01') {
-        server.emit('game_over', payload);
-      }
     }
   }
 
@@ -817,8 +802,5 @@ export class GameService implements OnModuleInit {
       currentRound: 0,
     };
     server.to(targetRoom.id).emit('return_to_lobby', returnPayload);
-    if (targetRoom.id === 'LAN-01') {
-      server.emit('return_to_lobby', returnPayload);
-    }
   }
 }

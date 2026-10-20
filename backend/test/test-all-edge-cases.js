@@ -60,10 +60,8 @@ async function runExhaustiveTests() {
 
     const resRoot = await httpGet(`${SERVER_URL}/`);
     assert(resRoot.status === 200, 'GET / returns 200 OK');
-    assert(resRoot.body.includes('<!DOCTYPE html>'), 'GET / serves HTML index document');
-    assert(resRoot.body.includes('anti-spoiler-hud'), 'GET / HTML contains anti-spoiler HUD');
-    assert(resRoot.body.includes('leaflet@1.9.4'), 'GET / HTML includes Leaflet v1.9.4');
-    assert(resRoot.body.includes('socket.io'), 'GET / HTML includes Socket.IO client script');
+    assert(resRoot.body.toLowerCase().includes('<!doctype html>'), 'GET / serves HTML index document');
+    assert(resRoot.body.includes('id="root"'), 'GET / HTML contains app root mount container');
 
     const resInfo = await httpGet(`${SERVER_URL}/api/info`);
     assert(resInfo.status === 200, 'GET /api/info returns 200 OK');
@@ -75,13 +73,8 @@ async function runExhaustiveTests() {
     const statusData = JSON.parse(resStatus.body);
     assert(statusData.status === 'LOBBY' && statusData.currentRound === 0, 'GET /api/status reports initial LOBBY state');
 
-    const resCss = await httpGet(`${SERVER_URL}/style.css`);
-    assert(resCss.status === 200, 'GET /style.css returns 200 OK');
-    assert(resCss.body.includes('#anti-spoiler-hud'), 'GET /style.css contains #anti-spoiler-hud styling');
-
-    const resJs = await httpGet(`${SERVER_URL}/app.js`);
-    assert(resJs.status === 200, 'GET /app.js returns 200 OK');
-    assert(resJs.body.includes('switchView'), 'GET /app.js contains SPA switchView logic');
+    const resFavicon = await httpGet(`${SERVER_URL}/favicon.svg`);
+    assert(resFavicon.status === 200, 'GET /favicon.svg returns 200 OK');
 
     const res404 = await httpGet(`${SERVER_URL}/nonexistent-route-404`);
     assert(res404.status === 404, 'GET /nonexistent-route-404 returns 404 Not Found');

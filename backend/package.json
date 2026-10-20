@@ -10,14 +10,13 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "test": "node test/test-gameplay.js",
-    "test:session": "node test/test-browser-session-refresh.js",
     "test:lobby": "node test/test-lobby-buttons.js",
     "test:params": "node test/test-admissions-and-params.js",
     "test:db": "node test/test-difficulty-and-db.js",
     "test:security": "node test/test-security-and-hijack.js",
     "test:edge": "node test/test-all-edge-cases.js",
-    "test:zero-trust": "node test/test-zero-trust-sse-lobbies.js",
-    "test:all": "node test/test-gameplay.js && node test/test-lobby-buttons.js && node test/test-admissions-and-params.js && node test/test-difficulty-and-db.js && node test/test-security-and-hijack.js && node test/test-all-edge-cases.js && node test/test-zero-trust-sse-lobbies.js"
+    "test:zero-trust": "node test/test-zero-trust-e2e.js",
+    "test:all": "node test/test-gameplay.js && node test/test-lobby-buttons.js && node test/test-admissions-and-params.js && node test/test-difficulty-and-db.js && node test/test-security-and-hijack.js && node test/test-all-edge-cases.js && node test/test-zero-trust-e2e.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
