@@ -1,0 +1,13 @@
+{
+  "name": "lan-guessr-frontend",
+  "version": "1.0.0",
+  "description": "LAN-Guessr Frontend",
+  "scripts": {
+    "start": "http-server . -p 3000 -c-1 --cors"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

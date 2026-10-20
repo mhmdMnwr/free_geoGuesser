@@ -1,0 +1,53 @@
+services:
+  # High-Performance Geographical Database (PostgreSQL 16 + PostGIS)
+  # Preloaded with 10,000+ verified road locations across 86+ countries
+  geo-db:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: lan-guessr-geo-db
+    environment:
+      POSTGRES_DB: geodb
+      POSTGRES_USER: geoguessr
+      POSTGRES_PASSWORD: geopassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/init-geo-db.sql:/docker-entrypoint-initdb.d/init-geo-db.sql:ro
+      - geo-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U geoguessr -d geodb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # LAN-Guessr NestJS Backend Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lan-guessr-backend
+    environment:
+      PORT: 5000
+      FRONTEND_PORT: 3000
+      DATABASE_URL: postgres://geoguessr:geopassword@geo-db:5432/geodb
+    ports:
+      - "5000:5000"
+    depends_on:
+      geo-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # LAN-Guessr Web Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lan-guessr-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  geo-db-data:

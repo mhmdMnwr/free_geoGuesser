@@ -1,0 +1,41 @@
+{
+  "name": "lan-guessr-backend",
+  "version": "1.0.0",
+  "description": "LAN-Guessr NestJS Backend Server",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "test": "node test/test-gameplay.js",
+    "test:lobby": "node test/test-lobby-buttons.js",
+    "test:params": "node test/test-admissions-and-params.js",
+    "test:db": "node test/test-difficulty-and-db.js",
+    "test:security": "node test/test-security-and-hijack.js",
+    "test:edge": "node test/test-all-edge-cases.js",
+    "test:all": "node test/test-gameplay.js && node test/test-lobby-buttons.js && node test/test-admissions-and-params.js && node test/test-difficulty-and-db.js && node test/test-security-and-hijack.js && node test/test-all-edge-cases.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.0.0",
+    "@nestjs/websockets": "^11.0.0",
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "socket.io-client": "^4.8.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}
