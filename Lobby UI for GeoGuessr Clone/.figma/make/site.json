@@ -1,0 +1,10 @@
+{
+  "description": "Provides an interactive game lobby interface inspired by GeoGuessr, enabling players to join and prepare for location-based guessing games seamlessly.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
