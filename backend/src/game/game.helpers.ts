@@ -18,6 +18,8 @@ export function getLanAddresses(): { interface: string; address: string }[] {
 
 export function getClientIp(socket: Socket, allowDevMock = true): string {
   let rawIp =
+    (socket.handshake?.headers?.['cf-connecting-ip'] as string) ||
+    ((socket.handshake?.headers?.['x-forwarded-for'] as string)?.split(',')[0].trim()) ||
     socket.handshake.address ||
     (socket.request as any)?.socket?.remoteAddress ||
     (socket.request as any)?.connection?.remoteAddress ||
@@ -35,15 +37,36 @@ export function getClientIp(socket: Socket, allowDevMock = true): string {
     rawIp === 'localhost' ||
     process.env.NODE_ENV === 'test';
 
-  if (allowDevMock && isLocalOrigin && socket.handshake.query?.mockIp) {
+  const devMockAllowed =
+    allowDevMock &&
+    process.env.NODE_ENV !== 'production' &&
+    (isLocalOrigin || process.env.NODE_ENV === 'test');
+
+  if (devMockAllowed && socket.handshake.query?.mockIp) {
     return String(socket.handshake.query.mockIp).trim();
   }
 
   return rawIp;
 }
 
+export function getClientId(socket: Socket): string {
+  const token =
+    (socket.handshake?.query?.clientId as string) ||
+    (socket.handshake?.auth?.clientId as string) ||
+    (socket.handshake?.query?.sessionToken as string) ||
+    (socket.handshake?.auth?.sessionToken as string) ||
+    (socket.handshake?.query?.mockIp as string);
+  if (token && typeof token === 'string' && token.trim()) {
+    return token.trim();
+  }
+  const ip = getClientIp(socket);
+  return `${ip}_${socket.id}`;
+}
+
 export function getReqClientIp(req: Request, allowDevMock = true): string {
   let rawIp =
+    (req.headers['cf-connecting-ip'] as string) ||
+    ((req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()) ||
     req.socket?.remoteAddress ||
     (req.connection as any)?.remoteAddress ||
     req.ip ||
@@ -61,7 +84,12 @@ export function getReqClientIp(req: Request, allowDevMock = true): string {
     rawIp === 'localhost' ||
     process.env.NODE_ENV === 'test';
 
-  if (allowDevMock && isLocalOrigin && req.query?.mockIp) {
+  const devMockAllowed =
+    allowDevMock &&
+    process.env.NODE_ENV !== 'production' &&
+    (isLocalOrigin || process.env.NODE_ENV === 'test');
+
+  if (devMockAllowed && req.query?.mockIp) {
     return String(req.query.mockIp).trim();
   }
 
@@ -143,4 +171,20 @@ export function selectDiverseMatchLocations(
   }
 
   return shuffleArray(selected);
+}
+
+/**
+ * Strips internal state, province, or county names from location labels to prevent spoilers
+ */
+export function sanitizeLocationLabel(target: { label?: string; country?: string }): string {
+  if (target.country) {
+    return `Highway Route, ${target.country}`;
+  }
+  if (!target.label) return 'Classified Highway Route';
+  const commaIdx = target.label.lastIndexOf(',');
+  if (commaIdx !== -1) {
+    const country = target.label.substring(commaIdx + 1).trim();
+    return `Highway Route, ${country}`;
+  }
+  return target.label.replace(/^Road in\s+[^,]+,\s*/i, 'Highway Route, ');
 }

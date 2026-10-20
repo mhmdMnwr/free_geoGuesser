@@ -3630,3 +3630,166 @@ button:focus-visible {
     font-size: 44px;
   }
 }
+
+
+/* ==========================================================================
+   WAYFINDER LEAFLET & MULTI-LOBBY INTERACTION OVERLAYS
+   ========================================================================== */
+@import 'leaflet/dist/leaflet.css';
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #020617 !important;
+  font-family: inherit;
+  z-index: 10;
+}
+
+.leaflet-tile {
+  filter: brightness(0.9) contrast(1.1) saturate(0.95);
+}
+
+.custom-recon-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-recon-pin-inner {
+  width: 16px;
+  height: 16px;
+  background: #38bdf8;
+  border: 2.5px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #38bdf8, 0 0 22px rgba(56, 189, 248, 0.8);
+  animation: pin-pulse 1.5s infinite alternate;
+}
+
+.custom-target-pin-inner {
+  width: 18px;
+  height: 18px;
+  background: #10b981;
+  border: 2.5px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 14px #10b981, 0 0 24px rgba(16, 185, 129, 0.85);
+}
+
+.custom-player-pin-inner {
+  width: 14px;
+  height: 14px;
+  background: #e2e8f0;
+  border: 2px solid #64748b;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes pin-pulse {
+  0% { transform: scale(0.85); box-shadow: 0 0 6px #38bdf8; }
+  100% { transform: scale(1.2); box-shadow: 0 0 18px #38bdf8; }
+}
+
+.streetview-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: #020617;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.88);
+  backdrop-filter: blur(10px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-dialog {
+  background: #0b1120;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(56, 189, 248, 0.2);
+  border-radius: 12px;
+  max-width: 540px;
+  width: 100%;
+  padding: 30px;
+  position: relative;
+  color: #f8fafc;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 14px;
+}
+
+.modal-title {
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #38bdf8;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-field {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.modal-input {
+  background: #030712;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #f8fafc;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.modal-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.modal-select {
+  background: #030712;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #f8fafc;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}

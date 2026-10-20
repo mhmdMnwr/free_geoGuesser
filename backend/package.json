@@ -10,12 +10,14 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "test": "node test/test-gameplay.js",
+    "test:session": "node test/test-browser-session-refresh.js",
     "test:lobby": "node test/test-lobby-buttons.js",
     "test:params": "node test/test-admissions-and-params.js",
     "test:db": "node test/test-difficulty-and-db.js",
     "test:security": "node test/test-security-and-hijack.js",
     "test:edge": "node test/test-all-edge-cases.js",
-    "test:all": "node test/test-gameplay.js && node test/test-lobby-buttons.js && node test/test-admissions-and-params.js && node test/test-difficulty-and-db.js && node test/test-security-and-hijack.js && node test/test-all-edge-cases.js"
+    "test:zero-trust": "node test/test-zero-trust-sse-lobbies.js",
+    "test:all": "node test/test-gameplay.js && node test/test-lobby-buttons.js && node test/test-admissions-and-params.js && node test/test-difficulty-and-db.js && node test/test-security-and-hijack.js && node test/test-all-edge-cases.js && node test/test-zero-trust-sse-lobbies.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
@@ -23,6 +25,8 @@
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/platform-socket.io": "^11.0.0",
     "@nestjs/websockets": "^11.0.0",
+    "@types/ioredis": "^4.28.10",
+    "ioredis": "^6.0.0",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -34,6 +38,7 @@
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.10",
+    "javascript-obfuscator": "^5.9.0",
     "socket.io-client": "^4.8.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"

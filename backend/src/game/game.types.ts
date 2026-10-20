@@ -4,9 +4,14 @@ export interface Coords {
 }
 
 export interface Player {
+  id?: string;
   ip: string;
   socketId: string;
   username: string;
+  clientPublicKey?: string;
+  serverPublicKey?: string;
+  serverPrivateKey?: string;
+  aesKey?: Buffer;
   connected: boolean;
   totalScore: number;
   currentPin: Coords | null;
@@ -15,6 +20,9 @@ export interface Player {
   lastRoundScore: number;
   lastRoundDistanceKm: number | null;
   inGame: boolean;
+  sessionToken?: string;
+  isRefreshing?: boolean;
+  lastDisconnectedAt?: number;
 }
 
 export interface PendingAdmission {
@@ -40,7 +48,15 @@ export type GameStatus =
   | 'ROUND_RESULTS'
   | 'GAME_OVER';
 
-export interface GameState {
+export interface GameRoom {
+  id: string;
+  name: string;
+  hostIp: string | null;
+  hostName: string | null;
+  hostSocketId?: string | null;
+  hostId?: string | null;
+  hostHeartbeat?: number;
+  lastHostUsername: string | null;
   status: GameStatus;
   currentRound: number;
   totalRounds: number;
@@ -50,6 +66,7 @@ export interface GameState {
   selectedLocations: GeoLocation[];
   roundTarget: GeoLocation | null;
   roundUplinkToken: string | null;
+  roadToken?: string | null;
   currentSharedImage: string | null;
   sharedImageTimestamp: number | null;
   sharedImageCaption: string;
@@ -58,8 +75,24 @@ export interface GameState {
   firstGuesserName: string | null;
   lastRoundResults: any;
   lastGameOver: any;
-  hostIp: string | null;
-  lastHostUsername: string | null;
   players: Record<string, Player>;
   pendingAdmissions: Record<string, PendingAdmission>;
+  maxPlayers: number;
+  createdAt: number;
+}
+
+export type GameState = GameRoom;
+
+export interface LobbySummary {
+  id: string;
+  name: string;
+  hostName: string;
+  hostIp: string | null;
+  playerCount: number;
+  maxPlayers: number;
+  selectedRegion: string;
+  difficulty: string;
+  totalRounds: number;
+  status: GameStatus;
+  ping: number;
 }

@@ -1,9 +1,60 @@
 services:
+  # Edge Gateway & Reverse Proxy (Pure LAN Ingress)
+  # Public Host Ports: 3000 (UI), 5000 (API & WebSockets)
+  # Internal IP: 172.28.0.10
+  gateway:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lan-guessr-gateway
+    networks:
+      languessr_net:
+        ipv4_address: 172.28.0.10
+    ports:
+      - "3000:80"
+      - "5000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Core Game Engine, Lobby & Media Microservice Cluster (NestJS)
+  # Internal IP: 172.28.0.11
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lan-guessr-backend
+    networks:
+      languessr_net:
+        ipv4_address: 172.28.0.11
+        aliases:
+          - lobby-service
+          - game-engine
+          - road-proxy
+          - backend
+    environment:
+      PORT: 5000
+      FRONTEND_PORT: 3000
+      DATABASE_URL: postgres://geoguessr:geopassword@172.28.0.14:5432/geodb
+      REDIS_HOST: 172.28.0.15
+      REDIS_PORT: 6379
+      INTERNAL_CLUSTER_SECRET: lan_guessr_cluster_secret_e9f3b8a1
+    depends_on:
+      geo-db:
+        condition: service_healthy
+      redis-bus:
+        condition: service_healthy
+    restart: unless-stopped
+
   # High-Performance Geographical Database (PostgreSQL 16 + PostGIS)
   # Preloaded with 10,000+ verified road locations across 86+ countries
+  # Internal IP: 172.28.0.14
   geo-db:
     image: postgis/postgis:16-3.4-alpine
     container_name: lan-guessr-geo-db
+    networks:
+      languessr_net:
+        ipv4_address: 172.28.0.14
     environment:
       POSTGRES_DB: geodb
       POSTGRES_USER: geoguessr
@@ -20,34 +71,29 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # LAN-Guessr NestJS Backend Server
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: lan-guessr-backend
-    environment:
-      PORT: 5000
-      FRONTEND_PORT: 3000
-      DATABASE_URL: postgres://geoguessr:geopassword@geo-db:5432/geodb
-    ports:
-      - "5000:5000"
-    depends_on:
-      geo-db:
-        condition: service_healthy
+  # Redis 7 In-Memory Backbone & Real-time Pub/Sub Broker
+  # Host Watchdog TTL, Ephemeral Lobby State & Binary Road Panorama Cache
+  # Internal IP: 172.28.0.15
+  redis-bus:
+    image: redis:7-alpine
+    container_name: lan-guessr-redis
+    networks:
+      languessr_net:
+        ipv4_address: 172.28.0.15
+    command: redis-server --appendonly no --save ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
-  # LAN-Guessr Web Frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: lan-guessr-frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    restart: unless-stopped
+networks:
+  languessr_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 volumes:
   geo-db-data:

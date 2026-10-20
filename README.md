@@ -1,161 +1,130 @@
-# 🌍 LAN-Guessr | Free Tactical Local Multiplayer Geo-Battle
+# 🌍 WAYFINDER | Pure LAN Zero-Trust Tactical Geo-Battle
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/Security-Zero--Trust%20ECDH%20P--256-blueviolet.svg" alt="Zero-Trust ECDH">
+  <img src="https://img.shields.io/badge/Encryption-AES--256--GCM-success.svg" alt="AES-256-GCM">
+  <img src="https://img.shields.io/badge/Redis-7%20In--Memory%20Backbone-dc382d.svg" alt="Redis 7">
   <img src="https://img.shields.io/badge/NestJS-v11-ea2845.svg" alt="NestJS">
-  <img src="https://img.shields.io/badge/React-18-61dafb.svg" alt="React 18">
+  <img src="https://img.shields.io/badge/React-18%20%2B%20Vite-61dafb.svg" alt="React 18">
   <img src="https://img.shields.io/badge/PostgreSQL-16%20%2B%20PostGIS-336791.svg" alt="PostGIS">
-  <img src="https://img.shields.io/badge/Socket.IO-v4-010101.svg" alt="Socket.IO">
-  <img src="https://img.shields.io/badge/Docker-Compose%20Ready-2496ed.svg" alt="Docker">
-  <img src="https://img.shields.io/badge/Coverage-100%25%20Verified%20Tests-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Docker-Microservices%20Cluster-2496ed.svg" alt="Docker">
 </p>
 
-**LAN-Guessr** is a 100% free, self-hosted, real-time multiplayer geography battle game designed for local area networks (LAN parties, office games, classrooms, and friends). 
+**WAYFINDER** (formerly LAN-Guessr) is a 100% free, self-hosted, pure LAN real-time multiplayer geography battle game designed for local area networks (LAN parties, Wi-Fi gatherings, office games, and classrooms).
 
-Drop into high-resolution, interactive Street View roads across 86+ countries, scan your surroundings, pinpoint your guess on an English interactive tactical map, and race against friends as the scramble timer ticks down. **No API keys, no Google billing, and no sign-ups required.**
+Drop into high-resolution, interactive reconnaissance roads across 86+ countries, scan your surroundings, pinpoint your guess on an English tactical atlas, and race against friends as the scramble timer ticks down. **No API keys, no Google billing, no external cloud dependencies, and zero Wireshark eavesdropping risk.**
+
+---
+
+## 🛡️ Pure LAN Zero-Trust Security Architecture
+
+1. **Wireshark Eavesdropping Defense (ECDH P-256)**:
+   - Neither client nor server ever transmits the symmetric key over the LAN.
+   - Client and server exchange only public curve points (`04...`).
+   - Each peer independently derives an identical 256-bit AES-GCM session key in device RAM. Wireshark packets reveal only uncrackable ciphertext.
+2. **Encrypted Guess Submissions**:
+   - Player guesses are encrypted with **AES-256-GCM** before touching the wire. Raw `{ lat, lng }` coordinates are never transmitted across the LAN.
+3. **Strict Host Invariant & Watchdog Termination**:
+   - The lobby creator holds the immutable Crown 👑.
+   - Host emits an active heartbeat every 2.5s to maintain an 8-second Redis TTL.
+   - If the host closes their browser or leaves, the watchdog instantly disbands the room for all players—preventing host hijacking or state corruption.
+4. **Centralized Media & Road Proxy**:
+   - The backend server fetches or renders road panoramas directly into a binary Redis cache.
+   - Phones query the local Edge Gateway (`/api/media/road/:roadToken`) over the LAN.
+   - Eliminates Wi-Fi bandwidth saturation and strips all Google coordinates, tracking cookies, and metadata.
+5. **Microservice Network Isolation**:
+   - Services run in an isolated Docker bridge network (`172.28.0.0/16`).
+   - Internal inter-service requests are signed and verified with HMAC-SHA256 (`X-Internal-Service-Auth`).
 
 ---
 
 ## 🌟 Key Features
 
-- **🚗 True Official Street View Road Coverage**: High-definition Google Street View with full road traversal (arrow-key and click driving), compass rotation, tilt, and zoom. Photospheres, indoor venues, and dead-end beaches are filtered out.
+- **🏰 Multi-Lobby Squad Orchestration**: Any player can create their own squad room, select custom regions, choose round counts, and configure first-guess timers. Other players can browse all active squad expeditions in real time.
+- **🚗 High-Resolution Tactical Reconnaissance**: Interactive road panoramas served securely from local cache with zero external WAN calls from mobile devices.
 - **🗺️ 10,050+ Curated Global Coordinates**: Curated locations across Europe, Asia, Africa, North America, South America, and Oceania, backed by PostGIS spatial queries.
-- **⚡ Zero API Keys & 100% Free**: Uses ESRI World Street Map for pure English cartographic tiles (no watermark, no rate limits) and zero-cost interactive Street View embeds.
-- **🎮 Real-Time Low-Latency LAN Multiplayer**: Built on Socket.IO WebSockets. Operatives join instantly via browser on phones, tablets, and laptops by scanning the on-screen QR code or navigating to your LAN IP.
-- **👑 Host Gatekeeper & Match Administration**:
-  - **Admission Clearance**: Host accepts or declines incoming operatives with a live radar popup.
-  - **Match Parameters**: Configure total rounds (3–20) and dynamic first-guess scramble timer (5s–120s).
-  - **Region Selector**: Target specific continents (`All`, `Europe`, `Asia`, `Africa`, `Americas`, `Oceania`).
-  - **Operational Difficulty**: Filter by `Easy` (major capitals & iconic landmarks), `Medium` (cities & national highways), or `Hard` (remote rural outposts).
-  - **Emergency Stop & Match Return**: Host can stop or reset to lobby at any point.
-- **🛡️ Anti-Cheat & Coordinate Shielding**: Coordinates are stripped from round payloads and protected via server-side XOR-ciphered uplink tokens (`/api/streetview/uplink`), preventing DevTools inspection.
-- **⏱️ Dynamic Scramble Timer**: When the first operative locks in a guess, a scramble timer is triggered for all remaining players. Incomplete guesses automatically score from draft pins when the clock expires.
-- **🏆 3D Olympic Podium & Leaderboard**: Real-time score decay calculation ($0 - 5000$ points based on Haversine distance), closest-guesser badges, and 3D medal podium celebrations.
+- **⚡ Zero API Keys & 100% Free**: Pure English cartographic tiles (no watermark, no rate limits) and zero-cost interactive embeds.
+- **🎮 Real-Time Low-Latency LAN Multiplayer**: Built on Socket.IO WebSockets and Redis 7 Pub/Sub. Operatives join via browser on phones, tablets, and PCs.
+- **⏱️ Dynamic Scramble Timer**: When the first operative locks in a guess, a scramble countdown starts for all remaining squad members.
+- **🏆 Olympic Podium & Leaderboard**: Real-time score decay calculation ($0 - 5000$ points based on Haversine distance), closest-guesser badges, and podium celebrations.
 
 ---
 
-## 🏗️ Architecture & Service Isolation
-
-The application is architected into **two fully decoupled, independent services**:
+## 🏗️ Docker Microservices Topology
 
 ```
-free_local_geoguesser/
-├── backend/                         # Standalone NestJS v11 Backend (Port 5000)
-│   ├── src/
-│   │   ├── game/                    # GameGateway (WebSockets), GameService, GameHelpers
-│   │   ├── geo-database/            # GeoDatabaseService (PostgreSQL + In-Memory Fallback)
-│   │   ├── info/                    # InfoController (/api/info, /api/status)
-│   │   └── streetview/              # StreetViewController (/api/streetview/uplink)
-│   ├── data/
-│   │   └── locations.json           # 10,050 curated global coordinates
-│   ├── test/                        # 6 automated E2E verification test suites (147 tests)
-│   ├── Dockerfile                   # Multi-stage production build
-│   └── package.json                 # Isolated backend dependencies & scripts
-│
-├── frontend/                        # Standalone Web Frontend (Port 3000)
-│   ├── index.html                   # Cyber-Tactical UI, React 18, Leaflet, QR Modal
-│   ├── app.js                       # SPA client pointing dynamically to backend (:5000)
-│   ├── style.css                    # 3D UI, tactical buttons, and glassmorphism styling
-│   ├── socket.io.min.js             # Offline-bundled Socket.IO client
-│   ├── Dockerfile                   # Standalone Nginx container
-│   ├── nginx.conf                   # Nginx web server reverse-proxy configuration
-│   └── package.json                 # Isolated frontend dependencies (http-server)
-│
-├── docker/
-│   └── init-geo-db.sql              # PostgreSQL 16 + PostGIS spatial seed database
-└── docker-compose.yml               # Multi-container orchestration (geo-db, backend, frontend)
++-----------------------------------------------------------------------------------+
+|                            LAN / Wi-Fi Operatives                                  |
+|         Host & Guest Browsers (ECDH P-256 Keypair, In-Memory AES-GCM Key)         |
++-----------------------------------------------------------------------------------+
+                                        │
+                             Port 3000 / Port 5000
+                                        ▼
++-----------------------------------------------------------------------------------+
+|  lan-guessr-gateway (Edge Gateway & Reverse Proxy, Nginx)                         |
+|  IP: 172.28.0.10 | Host Ports: 3000 (UI), 5000 (API & WebSockets)                 |
++-----------------------------------------------------------------------------------+
+       │                                     │                              │
+       │ /api/ & WebSockets                  │ Road Cache Stream            │ Shielded
+       ▼                                     ▼                              ▼
++-----------------------+          +--------------------+        +------------------+
+|  lan-guessr-backend   |          |  lan-guessr-redis  |        | lan-guessr-geo-db|
+|  (Core Engine & Host) | <======> |  (Redis 7 Backbone)| <====> | (PostGIS 16)     |
+|  IP: 172.28.0.11      |          |  IP: 172.28.0.15   |        | IP: 172.28.0.14  |
++-----------------------+          +--------------------+        +------------------+
 ```
+
+| Service Name | Container Name | Internal IP | Exposed Host Port | Function |
+| :--- | :--- | :--- | :--- | :--- |
+| **`gateway`** | `lan-guessr-gateway` | `172.28.0.10` | `3000`, `5000` | Edge reverse proxy, UI static hosting, WebSocket ingress |
+| **`backend`** | `lan-guessr-backend` | `172.28.0.11` | None | Game Engine, ECDH handshake, AES decryption, Lobby manager |
+| **`redis-bus`** | `lan-guessr-redis` | `172.28.0.15` | None | Ephemeral lobby state, 8s host watchdog TTL, road image cache |
+| **`geo-db`** | `lan-guessr-geo-db` | `172.28.0.14` | `5432` | PostGIS 16 preloaded with 10,050 curated global locations |
 
 ---
 
-## 🚀 Quick Start
-
-### Option A: One-Command Docker Compose (Recommended)
+## 🚀 Quick Start (Docker Compose)
 
 Make sure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/) installed:
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
-Services will boot up automatically:
-- **Web Frontend**: `http://localhost:3000`
-- **NestJS Backend**: `http://localhost:5000`
-- **PostGIS Geo Database**: `localhost:5432`
-
----
-
-### Option B: Local Node.js Development
-
-#### Prerequisites
-- Node.js >= 20.x
-- npm >= 9.x
-- *(Optional)* Docker for PostgreSQL/PostGIS (an in-memory JSON dataset of 10,050 locations will automatically be used if PostgreSQL is not running).
-
-#### 1. Start the Backend Server (Port 5000)
-```bash
-cd backend
-npm install
-npm run build
-npm run start:prod
-# Or development watch mode:
-# npm run start:dev
-```
-
-#### 2. Start the Frontend Server (Port 3000)
-In a separate terminal window:
-```bash
-cd frontend
-npm install
-npm start
-```
+Services boot up automatically within seconds:
+- **Game UI & Tactical Atlas**: `http://localhost:3000` or `http://<LAN_IP>:3000`
+- **Edge API & WebSockets**: `http://localhost:5000` or `http://<LAN_IP>:5000`
+- **PostGIS Spatial Database**: `localhost:5432` (10,050 locations ready)
+- **Redis 7 In-Memory Backbone**: Internal cluster network (`172.28.0.15:6379`)
 
 ---
 
 ## 📱 How to Play on LAN
 
-1. Start both services on the host machine.
-2. Open your browser and navigate to `http://localhost:3000` (or `http://<HOST_IP>:3000`).
-3. The first connected player becomes the **Lobby Host** 👑.
-4. Other players on the same Wi-Fi/Ethernet network can join by:
-   - Scanning the **QR code** on the host's screen using their phone or tablet camera.
-   - Navigating to `http://<HOST_IP>:3000` directly in any web browser.
-5. The Host admits operatives, chooses the region & difficulty, configures round parameters, and clicks **Commence Operation**.
+1. Launch the stack on the host machine (`docker compose up -d`).
+2. Open `http://<HOST_LAN_IP>:3000` in any web browser.
+3. Click **Create Squad Expedition** to generate a squad room and receive the host **Crown** 👑.
+4. Friends on the same Wi-Fi network open `http://<HOST_LAN_IP>:3000`, browse the room list, and join.
+5. In-memory ECDH key exchange establishes secure end-to-end encryption without transmitting symmetric keys.
+6. The host configures match parameters (region, round count, scramble timer) and clicks **Commence Expedition**.
 
 ---
 
-## 🧪 Automated Test Verification
+## 🧪 Zero-Trust Automated Verification Suite
 
-The backend includes a comprehensive, automated test suite covering 147 edge cases, security validations, and gameplay mechanics.
-
-Run tests directly from the `backend/` directory:
+Run the end-to-end security test suite to verify all cryptographic and zero-trust safeguards:
 
 ```bash
-cd backend
-
-# Run core gameplay test suite
-npm test
-
-# Run individual test suites
-npm run test:lobby       # Lobby return buttons & lifecycle
-npm run test:params      # Admission gatekeeper & round parameter validation
-npm run test:db          # Difficulty filters & PostGIS spatial queries
-npm run test:security    # Crown hijacking & coordinate anti-leak protection
-npm run test:edge        # Exhaustive HTTP routes & gameplay edge cases
-
-# Run all suites sequentially (147 tests)
-npm run test:all
+node backend/test/test-zero-trust-e2e.js
 ```
 
-| Verification Suite | Target | Status |
-| :--- | :--- | :---: |
-| **Core Gameplay** | Dynamic countdown timers, host controls, closest guesser | ✅ 22/22 Passed |
-| **Lobby Navigation** | Solo & multiplayer reset idempotency, match rejoin | ✅ 12/12 Passed |
-| **Admissions & Parameters** | Accept/decline flows, round clamping (3–20), timer clamping (5–120s) | ✅ 29/29 Passed |
-| **Geo DB & Difficulty** | PostGIS database queries, easy/medium/hard classification | ✅ 10/10 Passed |
-| **Security & Hijack** | Crown hijacking prevention, callsign spoofing, coordinate cipher | ✅ 29/29 Passed |
-| **Exhaustive Edge Cases** | Reconnection, draft pin scoring, podium rankings | ✅ 45/45 Passed |
-| **Total** | | **✅ 147/147 Passed (100%)** |
+### Verified Security Guarantees:
+- [x] **ECDH Key Exchange**: Zero symmetric keys transmitted across the wire.
+- [x] **AES-256-GCM Ciphertext**: Guess coordinates strictly encrypted; zero plaintext coordinates in network frames.
+- [x] **Centralized Media Proxy**: Images served from Redis; zero Google URLs or coordinate leaks.
+- [x] **Host Heartbeat Watchdog**: Redis 8s TTL terminates rooms on host disconnect with zero room inheritance.
+- [x] **Edge Gateway Ingress Isolation**: Direct access to internal microservice endpoints blocked.
 
 ---
 
