@@ -1,46 +1,90 @@
 services:
-  # Edge Gateway & Reverse Proxy (Pure LAN Ingress)
+  # Web Frontend (Vite + React Nginx Server)
   # Public Host Port: 3000 (UI)
   # Internal IP: 172.28.0.10
-  gateway:
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: lan-guessr-gateway
+    container_name: lan-guessr-frontend
     networks:
       languessr_net:
         ipv4_address: 172.28.0.10
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      - api-gateway
     restart: unless-stopped
 
-  # Core Game Engine, Lobby & Media Microservice Cluster (NestJS)
-  # Public Host Port: 5000 (Backend API & Socket.IO WebSockets)
-  # Internal IP: 172.28.0.11
-  backend:
+  # API Gateway & Reverse Proxy Microservice (NestJS)
+  # Public Host Port: 5000 (Ingress API & WebSocket Proxy)
+  # Internal IP: 172.28.0.20
+  api-gateway:
     build:
-      context: ./backend
+      context: ./backend/gateway
       dockerfile: Dockerfile
-    container_name: lan-guessr-backend
+    container_name: lan-guessr-gateway
+    networks:
+      languessr_net:
+        ipv4_address: 172.28.0.20
+        aliases:
+          - backend
+          - gateway
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      HOST_PRIMARY_IP: ${HOST_PRIMARY_IP:-192.168.20.39}
+      INTERNAL_CLUSTER_SECRET: lan_guessr_cluster_secret_e9f3b8a1
+      LOBBY_SERVICE_URL: http://172.28.0.11:5001
+      GAME_ENGINE_URL: http://172.28.0.12:5002
+      ROAD_PROXY_URL: http://172.28.0.13:5003
+    depends_on:
+      - lobby-service
+      - game-engine
+      - road-proxy
+    restart: unless-stopped
+
+  # Lobby & Presence Lifecycle Microservice (NestJS)
+  # Internal IP: 172.28.0.11 (Port 5001)
+  lobby-service:
+    build:
+      context: ./backend/lobby-service
+      dockerfile: Dockerfile
+    container_name: lan-guessr-lobby
     networks:
       languessr_net:
         ipv4_address: 172.28.0.11
-        aliases:
-          - lobby-service
-          - game-engine
-          - road-proxy
-          - backend
+    expose:
+      - "5001"
     environment:
-      PORT: 5000
-      FRONTEND_PORT: 3000
+      PORT: 5001
+      REDIS_HOST: 172.28.0.15
+      REDIS_PORT: 6379
+      INTERNAL_CLUSTER_SECRET: lan_guessr_cluster_secret_e9f3b8a1
+    depends_on:
+      redis-bus:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Core Game Engine & Real-Time Socket.IO Microservice (NestJS)
+  # Internal IP: 172.28.0.12 (Port 5002)
+  game-engine:
+    build:
+      context: ./backend/game-engine
+      dockerfile: Dockerfile
+    container_name: lan-guessr-engine
+    networks:
+      languessr_net:
+        ipv4_address: 172.28.0.12
+    expose:
+      - "5002"
+    environment:
+      PORT: 5002
       DATABASE_URL: postgres://geoguessr:geopassword@172.28.0.14:5432/geodb
       REDIS_HOST: 172.28.0.15
       REDIS_PORT: 6379
       INTERNAL_CLUSTER_SECRET: lan_guessr_cluster_secret_e9f3b8a1
-    ports:
-      - "5000:5000"
     depends_on:
       geo-db:
         condition: service_healthy
@@ -48,8 +92,29 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Centralized Road & Panorama Image Fetcher / Cache Microservice (NestJS)
+  # Internal IP: 172.28.0.13 (Port 5003)
+  road-proxy:
+    build:
+      context: ./backend/road-proxy
+      dockerfile: Dockerfile
+    container_name: lan-guessr-road
+    networks:
+      languessr_net:
+        ipv4_address: 172.28.0.13
+    expose:
+      - "5003"
+    environment:
+      PORT: 5003
+      REDIS_HOST: 172.28.0.15
+      REDIS_PORT: 6379
+      INTERNAL_CLUSTER_SECRET: lan_guessr_cluster_secret_e9f3b8a1
+    depends_on:
+      redis-bus:
+        condition: service_healthy
+    restart: unless-stopped
+
   # High-Performance Geographical Database (PostgreSQL 16 + PostGIS)
-  # Preloaded with 10,000+ verified road locations across 86+ countries
   # Internal IP: 172.28.0.14
   geo-db:
     image: postgis/postgis:16-3.4-alpine
@@ -74,7 +139,6 @@ services:
     restart: unless-stopped
 
   # Redis 7 In-Memory Backbone & Real-time Pub/Sub Broker
-  # Host Watchdog TTL, Ephemeral Lobby State & Binary Road Panorama Cache
   # Internal IP: 172.28.0.15
   redis-bus:
     image: redis:7-alpine
