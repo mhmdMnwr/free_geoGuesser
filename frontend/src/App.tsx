@@ -59,9 +59,31 @@ export default function App() {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false)
 
   const [lobbies, setLobbies] = useState<Room[]>([])
-  const [activeRoom, setActiveRoom] = useState<Room | null>(null)
+  const [activeRoom, setActiveRoom] = useState<Room | null>(() => {
+    const active = getStoredActiveRoom()
+    const storedScreen = getStoredScreen()
+    if (active?.id && (storedScreen === "lobby" || storedScreen === "game")) {
+      return {
+        id: active.id,
+        name: `Squad ${active.id}`,
+        hostName: "",
+        hostIp: null,
+        playerCount: 1,
+        maxPlayers: 8,
+        selectedRegion: "all",
+        difficulty: "all",
+        totalRounds: 5,
+        status: storedScreen === "game" ? "ROUND_ACTIVE" : "LOBBY",
+        ping: 3,
+      }
+    }
+    return null
+  })
   const [roomPlayers, setRoomPlayers] = useState<Player[]>([])
-  const [isHost, setIsHost] = useState<boolean>(false)
+  const [isHost, setIsHost] = useState<boolean>(() => {
+    const active = getStoredActiveRoom()
+    return active?.isHost || false
+  })
   const [lanAddress, setLanAddress] = useState("")
 
   // Game active state
@@ -105,16 +127,8 @@ export default function App() {
   // Lock navigation to prevent browser back/forward buttons from changing pages
   useEffect(() => {
     const unlock = lockNavigation()
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (screen === "lobby" || screen === "game") {
-        e.preventDefault()
-        e.returnValue = ""
-      }
-    }
-    window.addEventListener("beforeunload", handleBeforeUnload)
     return () => {
       unlock()
-      window.removeEventListener("beforeunload", handleBeforeUnload)
     }
   }, [screen])
 
@@ -194,18 +208,33 @@ export default function App() {
     })
     socketRef.current = socket
 
-    socket.on("connect", () => {
+    socket.on("connect", async () => {
       socket.emit("get_lobbies")
 
+      const currentStoredRoom = getStoredActiveRoom()
+      const currentStoredScreen = getStoredScreen()
+      const roomToRejoin = currentStoredRoom?.id || targetRoomId
+
       // If user refreshed while in a room, automatically re-join with their codename
-      if (targetRoomId) {
+      if (roomToRejoin) {
+        if (!clientPublicKeyRef.current) {
+          try {
+            const { keyPair, publicKeyHex } = await generateClientEcdhKeyPair()
+            setEcdhKeyPair(keyPair)
+            setClientPublicKey(publicKeyHex)
+            ecdhKeyPairRef.current = keyPair
+            clientPublicKeyRef.current = publicKeyHex
+          } catch (err) {
+            console.error("Client ECDH generation error:", err)
+          }
+        }
         socket.emit("join_lobby", {
-          roomId: targetRoomId,
+          roomId: roomToRejoin,
           username: getStoredUsername(),
           clientPublicKey: clientPublicKeyRef.current || clientPublicKey,
         })
-        if (initialRoute.screen === "game") {
-          socket.emit("join_game", { roomId: targetRoomId })
+        if (currentStoredScreen === "game" || initialRoute.screen === "game") {
+          socket.emit("join_game", { roomId: roomToRejoin })
         }
       }
     })
@@ -364,15 +393,18 @@ export default function App() {
       setTotalRounds(data.totalRounds)
       setUplinkToken(data.uplinkToken)
       setRoadToken(data.roadToken || null)
-      setCountdownSeconds(null)
-      setMyPin(null)
-      setHasGuessed(false)
+      setCountdownSeconds(data.countdownSeconds ?? null)
+      setMyPin(data.myPin || null)
+      setHasGuessed(Boolean(data.hasGuessed))
+      if (typeof data.totalScore === "number") {
+        setTotalScore(data.totalScore)
+      }
       setRoundResults(null)
       setGameOver(null)
       if (data.players) {
         setRoomPlayers(data.players)
       }
-      updateScreen("game", data.roomId || activeRoom?.id)
+      updateScreen("game", data.roomId || getStoredActiveRoom()?.id || activeRoom?.id)
     })
 
     socket.on("player_guessed", (data: any) => {
@@ -421,7 +453,7 @@ export default function App() {
       setGameOver(data)
     })
 
-    socket.on("return_to_lobby", () => {
+    socket.on("return_to_lobby", (data: any) => {
       addToast("Squad Leader returned match to lobby.", "info")
       setRoundResults(null)
       setGameOver(null)
@@ -430,7 +462,11 @@ export default function App() {
       setMyPin(null)
       setCountdownSeconds(null)
       setTotalScore(0)
-      updateScreen("lobby", activeRoom?.id)
+      if (data?.players) {
+        setRoomPlayers(data.players)
+      }
+      const targetRoomId = data?.roomId || getStoredActiveRoom()?.id
+      updateScreen("lobby", targetRoomId)
     })
 
     socket.on("lobby_terminated", (data: any) => {
@@ -541,6 +577,10 @@ export default function App() {
   }
 
   function handleLeaveRoom() {
+    if (screen === "game" && isHost) {
+      handleReturnToLobby()
+      return
+    }
     if (socketRef.current && activeRoom) {
       socketRef.current.emit("leave_lobby", { roomId: activeRoom.id, isHost })
       socketRef.current.emit("leave_game", { roomId: activeRoom.id, isHost })

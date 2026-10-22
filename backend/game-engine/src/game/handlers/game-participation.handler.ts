@@ -18,7 +18,6 @@ export class GameParticipationHandler {
       return;
     }
     if (room.status === 'LOBBY') {
-      socket.emit('error_message', { message: 'Match has not started yet. Waiting in lobby.' });
       return;
     }
 
@@ -55,6 +54,9 @@ export class GameParticipationHandler {
         firstGuesserName: room.firstGuesserName,
         isHost: (room.hostId && clientId === room.hostId) || ip === room.hostIp,
         hostIp: room.hostIp,
+        hasGuessed: Boolean(player.hasGuessed),
+        myPin: player.lockedGuess || null,
+        totalScore: player.totalScore || 0,
         players,
       });
     } else if (room.status === 'ROUND_RESULTS') {

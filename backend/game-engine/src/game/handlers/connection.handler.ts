@@ -26,7 +26,7 @@ export class ConnectionHandler {
     }
 
     const targetRoom = queryRoomId ? this.gameService.getRoom(queryRoomId) : null;
-    const existingRoom = targetRoom;
+    const existingRoom = targetRoom || this.gameService.findRoomByPlayer(clientId);
     const gameState = existingRoom || this.gameService.state;
     socket.join(gameState.id);
 
@@ -72,17 +72,27 @@ export class ConnectionHandler {
         status: existingRoom.status,
       });
 
-      if (existingRoom.status !== 'LOBBY' && player?.inGame) {
-        socket.emit('round_started', {
-          roomId: existingRoom.id,
-          round: existingRoom.currentRound,
-          totalRounds: existingRoom.totalRounds,
-          difficulty: existingRoom.roundTarget?.difficulty || existingRoom.difficulty,
-          uplinkToken: existingRoom.roundUplinkToken || null,
-          roadToken: (existingRoom as any).roadToken || null,
-          countdownSeconds: existingRoom.countdownSeconds,
-          isHost: Boolean(isHost),
-        });
+      if (existingRoom.status !== 'LOBBY' && player?.inGame !== false) {
+        if (existingRoom.status === 'ROUND_RESULTS' && existingRoom.lastRoundResults) {
+          socket.emit('round_results', existingRoom.lastRoundResults);
+        } else if (existingRoom.status === 'GAME_OVER' && existingRoom.lastGameOver) {
+          socket.emit('game_over', existingRoom.lastGameOver);
+        } else {
+          socket.emit('round_started', {
+            roomId: existingRoom.id,
+            round: existingRoom.currentRound,
+            totalRounds: existingRoom.totalRounds,
+            difficulty: existingRoom.roundTarget?.difficulty || existingRoom.difficulty,
+            uplinkToken: existingRoom.roundUplinkToken || null,
+            roadToken: (existingRoom as any).roadToken || null,
+            countdownSeconds: existingRoom.countdownSeconds,
+            isHost: Boolean(isHost),
+            hasGuessed: Boolean(player?.hasGuessed),
+            myPin: player?.lockedGuess || null,
+            totalScore: player?.totalScore || 0,
+            players: this.gameService.getLobbyPlayers(existingRoom),
+          });
+        }
       }
     }
 
@@ -118,10 +128,10 @@ export class ConnectionHandler {
             this.gameService.terminateLobby(
               room.id,
               server,
-              `Squad Leader (${player.username}) disconnected. Room disbanded.`,
+              `Squad Leader (${player.username}) left the page or website. Room disbanded.`,
             );
           }
-        }, 8000);
+        }, 4500);
         this.disconnectTimeouts.set(clientId, t);
         return;
       }

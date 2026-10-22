@@ -302,11 +302,7 @@ export function GameScreen({
               {String(currentRound).padStart(2, "0")} / {String(totalRounds).padStart(2, "0")}
             </strong>
           </span>
-          <span className="game-timer">
-            <Icon name="clock" size={16} />
-            {countdownSeconds !== null ? `00:${String(countdownSeconds).padStart(2, "0")}` : "SCANNING"}
-          </span>
-          {isHost && (
+          {isHost ? (
             <GameButton
               icon="back"
               onClick={() => {
@@ -317,14 +313,27 @@ export function GameScreen({
               variant="outline"
               title="Stop Match & Return to Lobby"
             >
-              STOP & LOBBY
+              RETURN TO LOBBY
+            </GameButton>
+          ) : (
+            <GameButton icon="back" onClick={onExit} variant="ghost">
+              EXIT
             </GameButton>
           )}
-          <GameButton icon="back" onClick={onExit} variant="ghost">
-            EXIT
-          </GameButton>
         </div>
       </header>
+
+      {/* Center-top countdown timer below the nav bar when the timer starts */}
+      {countdownSeconds !== null && !isResults && !isGameOver && (
+        <div
+          className={`game-timer ${countdownSeconds <= 5 ? "game-timer--urgent" : ""}`}
+        >
+          <Icon name="clock" size={18} />
+          <span>
+            {`${String(Math.floor(countdownSeconds / 60)).padStart(2, "0")}:${String(countdownSeconds % 60).padStart(2, "0")}`}
+          </span>
+        </div>
+      )}
 
       {/* Floating Admission Request Notification Bar for Host Mid-Game */}
       {isHost && pendingRequests && pendingRequests.length > 0 && (
@@ -610,14 +619,15 @@ export function GameScreen({
             ))}
           </div>
           <div className="mt-8 flex justify-center gap-4">
-            {isHost && (
+            {isHost ? (
               <GameButton icon="arrow" onClick={onReturnToLobby || onExit} variant="primary">
                 RETURN TO SQUAD LOBBY
               </GameButton>
+            ) : (
+              <GameButton onClick={onExit} variant="outline">
+                EXIT MATCH
+              </GameButton>
             )}
-            <GameButton onClick={onExit} variant="outline">
-              EXIT MATCH
-            </GameButton>
           </div>
         </section>
       )}

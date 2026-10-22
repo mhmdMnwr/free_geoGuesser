@@ -40,6 +40,10 @@ async function main() {
 
   await createPromise;
 
+  hostSocket.on('admission_request', (req) => {
+    hostSocket.emit('admit_player', { roomId: createdRoomId, targetClientId: req.clientId });
+  });
+
   // 3. Connect and Join Guest 1 (fills capacity: 2/2)
   const guest1Socket = io(GATEWAY_WS, {
     query: { clientId: guest1ClientId, mockIp: '192.168.1.102' },

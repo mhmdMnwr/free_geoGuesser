@@ -23,6 +23,7 @@ export class AdmissionHandler {
     clientPublicKey?: string,
   ) {
     socket.join(room.id);
+    const isReconnect = Boolean(room.players[clientId]);
     let player = room.players[clientId];
     if (!player) {
       player = createPlayer(clientId, ip, socket.id, username);
@@ -60,12 +61,14 @@ export class AdmissionHandler {
       totalRounds: room.totalRounds, status: room.status,
     });
     this.gameService.broadcastLobbyUpdate(server, room);
-    server.to(room.id).emit('player_entered_lobby', {
-      username,
-      clientId,
-      roomId: room.id,
-      totalPlayers: Object.keys(room.players).length,
-    });
+    if (!isReconnect) {
+      server.to(room.id).emit('player_entered_lobby', {
+        username,
+        clientId,
+        roomId: room.id,
+        totalPlayers: Object.keys(room.players).length,
+      });
+    }
     server.emit('lobbies_list', this.gameService.getLobbiesList());
   }
 

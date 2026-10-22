@@ -135,6 +135,9 @@ async function runTests() {
 
   // TEST 3: Guest Joins & Derives Shared Secret
   console.log('\n--- TEST 3: Guest ECDH Derivation ---');
+  socket1.on('admission_request', (req) => {
+    socket1.emit('admit_player', { roomId, targetClientId: req.clientId });
+  });
   const client2 = generateClientEcdh();
   const socket2 = io(SERVER_URL, {
     transports: ['websocket'],
