@@ -34,6 +34,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client.getBuffer(key);
   }
 
+  async getCached(key: string): Promise<string | null> {
+    try {
+      return await this.client.get(key);
+    } catch {
+      return null;
+    }
+  }
+
+  async setCached(key: string, value: string, ttlSeconds = 86400): Promise<void> {
+    try {
+      await this.client.set(key, value, 'EX', ttlSeconds);
+    } catch {}
+  }
+
   async getTargetCoords(roomIdOrToken: string): Promise<{ lat: number; lng: number } | null> {
     try {
       const direct = await this.client.get(`round:target:${roomIdOrToken}`);

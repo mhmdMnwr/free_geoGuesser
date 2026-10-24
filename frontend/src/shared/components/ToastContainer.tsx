@@ -18,50 +18,49 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   return (
     <div
       aria-live="polite"
-      className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm pointer-events-none"
+      className="fixed inset-x-0 mx-auto w-fit max-w-[min(440px,calc(100vw-32px))] z-[9999] pointer-events-none flex flex-col items-center gap-2 px-3"
+      style={{ top: "calc(var(--sat, 0px) + 10px)" }}
     >
       {toasts.map((toast) => {
         const type = toast.type || "info"
         const borderColor =
           type === "success"
-            ? "border-emerald-500/80 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+            ? "border-emerald-500/80 shadow-[0_4px_20px_rgba(16,185,129,0.25)]"
             : type === "warning"
-              ? "border-amber-500/80 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+              ? "border-amber-500/80 shadow-[0_4px_20px_rgba(245,158,11,0.25)]"
               : type === "error"
-                ? "border-rose-500/80 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
-                : "border-sky-500/80 shadow-[0_0_15px_rgba(14,165,233,0.3)]"
+                ? "border-rose-500/80 shadow-[0_4px_20px_rgba(244,63,94,0.25)]"
+                : "border-sky-500/80 shadow-[0_4px_20px_rgba(14,165,233,0.25)]"
 
         const badgeColor =
           type === "success"
-            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+            ? "bg-emerald-500/20 text-emerald-400"
             : type === "warning"
-              ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
+              ? "bg-amber-500/20 text-amber-400"
               : type === "error"
-                ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
-                : "bg-sky-500/20 text-sky-400 border-sky-500/40"
+                ? "bg-rose-500/20 text-rose-400"
+                : "bg-sky-500/20 text-sky-400"
 
         const iconName =
-          type === "success" ? "check" : type === "warning" ? "clock" : type === "error" ? "radar" : "lan"
+          type === "success" ? "check" : type === "warning" ? "clock" : type === "error" ? "radar" : "globe"
 
         return (
           <div
-            className={`pointer-events-auto flex items-start gap-3 p-3.5 bg-slate-950/95 border ${borderColor} rounded-xl backdrop-blur-md transition-all animate-in slide-in-from-right duration-200`}
+            className={`pointer-events-auto flex items-center gap-2.5 py-2 px-3.5 bg-slate-950/95 border ${borderColor} rounded-full backdrop-blur-xl transition-all shadow-lg animate-in slide-in-from-top-2 duration-200`}
             key={toast.id}
           >
             <span
-              className={`p-1.5 rounded-lg border text-xs font-mono font-bold flex items-center justify-center shrink-0 ${badgeColor}`}
+              className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] ${badgeColor}`}
             >
-              <Icon name={iconName} size={15} />
+              <Icon name={iconName} size={12} />
             </span>
-            <div className="flex-1 min-w-0 pt-0.5">
-              <div className="text-xs font-mono tracking-wider font-semibold text-slate-200 leading-snug">
-                {toast.message}
-              </div>
+            <div className="text-xs font-mono font-medium text-slate-100 tracking-wide truncate max-w-[280px] sm:max-w-[340px]">
+              {toast.message}
             </div>
             <button
-              className="text-slate-500 hover:text-slate-200 text-xs font-mono p-1 transition-colors shrink-0 cursor-pointer"
+              aria-label="Dismiss notification"
+              className="text-slate-400 hover:text-white text-xs font-mono p-1 transition-colors shrink-0 cursor-pointer -mr-1"
               onClick={() => onDismiss(toast.id)}
-              title="Dismiss"
               type="button"
             >
               ✕

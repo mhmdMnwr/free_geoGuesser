@@ -31,9 +31,10 @@ export class InternalAuthGuard implements CanActivate {
       throw new UnauthorizedException('Internal service auth token expired.');
     }
 
-    const secret =
-      process.env.INTERNAL_CLUSTER_SECRET ||
-      'lan_guessr_cluster_secret_e9f3b8a1';
+    const secret = process.env.INTERNAL_CLUSTER_SECRET;
+    if (!secret) {
+      throw new UnauthorizedException('Internal cluster security error: INTERNAL_CLUSTER_SECRET is not configured.');
+    }
 
     const path = req.path || req.originalUrl?.split('?')[0];
     const payload = `${timestamp}:${path}`;

@@ -1,7 +1,7 @@
 {
-  "name": "lan-guessr-gateway",
+  "name": "guessiha-gateway",
   "version": "1.0.0",
-  "description": "LAN-Guessr Edge API Gateway Microservice",
+  "description": "geussiha Edge API Gateway Microservice",
   "scripts": {
     "build": "nest build",
     "start": "nest start",

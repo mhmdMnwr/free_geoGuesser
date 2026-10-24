@@ -11,13 +11,11 @@ export interface AppRoute {
  * The application state is purely driven by game flow and WebSocket coordination.
  */
 export function lockNavigation(): () => void {
-  // Push an initial anchor state to prevent backward history traversal
   try {
     window.history.pushState(null, "", window.location.href)
   } catch {}
 
   const handlePopState = (e: PopStateEvent) => {
-    // Force history forward to remain on current application screen
     try {
       window.history.pushState(null, "", window.location.href)
     } catch {}
@@ -32,16 +30,20 @@ export function lockNavigation(): () => void {
 }
 
 /**
- * Updates URL silently without creating new browser history entries.
- * Never creates entries that would allow a user to use Back/Forward buttons.
+ * Updates URL state silently without creating new browser history entries.
  */
 export function navigateTo(screen: Screen, roomId?: string, _replace = true): void {
   try {
-    // Always use replaceState so no history entries are added
     window.history.replaceState({ screen, roomId }, "", window.location.pathname)
   } catch {}
 }
 
 export function parseCurrentRoute(): AppRoute {
+  try {
+    const state = window.history.state as Partial<AppRoute> | null
+    if (state && typeof state.screen === "string") {
+      return { screen: state.screen as Screen, roomId: state.roomId }
+    }
+  } catch {}
   return { screen: "select" }
 }

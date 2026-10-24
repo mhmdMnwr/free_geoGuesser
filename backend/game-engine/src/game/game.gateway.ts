@@ -18,14 +18,18 @@ import { MatchParamsHandler } from './handlers/match-params.handler';
 import { LegacyAdmissionHandler } from './handlers/legacy-admission.handler';
 import { GameParticipationHandler } from './handlers/game-participation.handler';
 import { AdmissionHandler } from './handlers/admission.handler';
+import { CrownElectionHandler } from './handlers/crown-election.handler';
 import { GameRoom } from './game.types';
 
 @WebSocketGateway({
   cors: { origin: '*', methods: ['GET', 'POST'], credentials: true },
+  maxHttpBufferSize: 65536,
 })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
+
+  private readonly rateLimits = new Map<string, { count: number; resetAt: number; spamScore: number }>();
 
   constructor(
     private readonly gameService: GameService,
@@ -38,33 +42,83 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly legacyAdmission: LegacyAdmissionHandler,
     private readonly gameParticipation: GameParticipationHandler,
     private readonly admissionHandler: AdmissionHandler,
+    private readonly crownElection: CrownElectionHandler,
   ) {}
 
+  private setupRateLimiter(socket: Socket) {
+    socket.use(([event, ...args], next) => {
+      const now = Date.now();
+      let record = this.rateLimits.get(socket.id);
+      if (!record || now > record.resetAt) {
+        record = { count: 1, resetAt: now + 1000, spamScore: 0 };
+        this.rateLimits.set(socket.id, record);
+      } else {
+        record.count++;
+      }
+
+      // High-cost or spam-sensitive actions receive higher score
+      const sensitiveEvents = [
+        'check_username',
+        'create_lobby',
+        'join_lobby',
+        'find_room_by_code',
+        'claim_host',
+        'start_game',
+        'next_round',
+      ];
+      if (sensitiveEvents.includes(event)) {
+        record.spamScore += 4;
+      } else {
+        record.spamScore += 1;
+      }
+
+      // Max 35 total events or > 40 spam score per second
+      if (record.count > 35 || record.spamScore > 40) {
+        if (record.count === 36) {
+          socket.emit('error_message', { message: 'Too many requests. Please slow down.' });
+        }
+        return; // Drop packet
+      }
+
+      next();
+    });
+  }
+
   public resolveRoom(socket: Socket, data?: any): GameRoom {
-    const ip = getClientIp(socket);
     const clientId = getClientId(socket);
     if (data && typeof data === 'object' && data.roomId) {
       const r = this.gameService.getRoom(data.roomId);
-      if (r) return r;
+      if (r) {
+        const isMemberOrHost =
+          r.id === 'LAN-01' ||
+          Boolean(r.players[clientId]) ||
+          r.hostId === clientId ||
+          r.hostSocketId === socket.id ||
+          Object.values(r.players).some((p) => p && (p.id === clientId || p.socketId === socket.id));
+        if (isMemberOrHost) return r;
+      }
     }
-    return (
-      this.gameService.findRoomByPlayer(clientId) ||
-      this.gameService.findRoomByPlayer(ip) ||
-      this.gameService.state
-    );
+    return this.gameService.findRoomByPlayer(clientId) || this.gameService.state;
   }
 
   handleConnection(socket: Socket) {
+    this.setupRateLimiter(socket);
     this.connectionHandler.handleConnection(socket, this.server);
   }
 
   handleDisconnect(socket: Socket) {
+    this.rateLimits.delete(socket.id);
     this.connectionHandler.handleDisconnect(socket, this.server);
   }
 
   @SubscribeMessage('get_lobbies')
   handleGetLobbies(@ConnectedSocket() socket: Socket) {
     this.lobbyHandler.handleGetLobbies(socket);
+  }
+
+  @SubscribeMessage('find_room_by_code')
+  handleFindRoomByCode(@ConnectedSocket() socket: Socket, @MessageBody() data: any) {
+    this.lobbyHandler.handleFindRoomByCode(socket, data);
   }
 
   @SubscribeMessage('check_username')
@@ -114,7 +168,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('lock_guess')
   handleLockGuess(@ConnectedSocket() socket: Socket, @MessageBody() data: any) {
-    this.guessHandler.handleLockGuess(socket, this.server, this.resolveRoom(socket, data), data);
+    return this.guessHandler.handleLockGuess(socket, this.server, this.resolveRoom(socket, data), data);
   }
 
   @SubscribeMessage('host_heartbeat')
@@ -129,7 +183,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('claim_host')
   handleClaimHost(@ConnectedSocket() socket: Socket) {
-    this.hostActions.handleClaimHost(socket, this.resolveRoom(socket));
+    this.hostActions.handleClaimHost(socket, this.server, this.resolveRoom(socket));
   }
 
   @SubscribeMessage('host_share_image')
@@ -195,5 +249,20 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('reject_player')
   handleRejectPlayer(@ConnectedSocket() socket: Socket, @MessageBody() data: any) {
     this.admissionHandler.handleRejectPlayer(socket, this.server, data);
+  }
+
+  @SubscribeMessage('demand_crown')
+  handleDemandCrown(@ConnectedSocket() socket: Socket, @MessageBody() data?: any) {
+    this.crownElection.handleDemandCrown(socket, this.server, this.resolveRoom(socket, data));
+  }
+
+  @SubscribeMessage('respond_crown_demand')
+  handleRespondCrownDemand(@ConnectedSocket() socket: Socket, @MessageBody() data: any) {
+    this.crownElection.handleRespondDemand(socket, this.server, this.resolveRoom(socket, data), data);
+  }
+
+  @SubscribeMessage('vote_crown')
+  handleVoteCrown(@ConnectedSocket() socket: Socket, @MessageBody() data: any) {
+    this.crownElection.handleVoteCrown(socket, this.server, this.resolveRoom(socket, data), data);
   }
 }

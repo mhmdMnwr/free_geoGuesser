@@ -1,0 +1,100 @@
+/* ==========================================================================
+   AMBIENT GRID, ATMOSPHERIC FX & LEAFLET BASE
+   ========================================================================== */
+
+.ambient-grid {
+  position: fixed;
+  right: -12vw;
+  bottom: -32vh;
+  z-index: -1;
+  width: 75vw;
+  height: 75vw;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(199, 255, 61, 0.24) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(199, 255, 61, 0.24) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(circle, black, transparent 70%);
+  transform: perspective(500px) rotateX(60deg) rotateZ(-12deg);
+  animation: grid-drift 18s linear infinite;
+}
+
+.effects-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.noise-field {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+  animation: noise-shift 180ms steps(2) infinite;
+}
+
+.scan-beam {
+  position: absolute;
+  top: -22%;
+  left: 0;
+  width: 100%;
+  height: 18%;
+  opacity: 0.38;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(67, 220, 255, 0.035) 75%,
+    rgba(67, 220, 255, 0.12)
+  );
+  animation: screen-scan 8s linear infinite;
+}
+
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--acid);
+  box-shadow: 0 0 8px var(--acid);
+  animation: particle-drift 8s linear infinite;
+}
+
+.particle--1 { top: 82%; left: 8%; animation-delay: -1s; }
+.particle--2 { top: 58%; left: 19%; animation-delay: -5s; animation-duration: 11s; }
+.particle--3 { top: 88%; left: 38%; background: var(--cyan); animation-delay: -3s; }
+.particle--4 { top: 72%; left: 61%; animation-duration: 13s; }
+.particle--5 { top: 92%; left: 77%; background: var(--cyan); animation-delay: -7s; }
+.particle--6 { top: 54%; left: 91%; animation-delay: -2s; }
+.particle--7 { top: 43%; left: 49%; animation-delay: -6s; animation-duration: 10s; }
+.particle--8 { top: 96%; left: 28%; background: var(--cyan); animation-delay: -4s; }
+
+/* Leaflet Map Integration */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #020617 !important;
+  font-family: inherit;
+  z-index: 10;
+}
+
+.leaflet-tile {
+  filter: brightness(0.9) contrast(1.1) saturate(0.95);
+}
+
+.custom-recon-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-recon-pin-inner {
+  width: 16px;
+  height: 16px;
+  background: #38bdf8;
+  border: 2.5px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #38bdf8, 0 0 22px rgba(56, 189, 248, 0.8);
+  animation: pin-pulse 1.5s infinite alternate;
+}

@@ -52,7 +52,7 @@ export class RoadProxyService {
     const cached = await this.redis.getRoadImage(roadToken);
     if (cached) return cached;
     if (roadToken && roadToken.startsWith('road_')) {
-      const fallback = this.generateFallbackRoadSvg(0, 0, 'TACTICAL INTEL');
+      const fallback = this.generateFallbackRoadSvg(0, 0, 'ROAD INTEL');
       await this.redis.setRoadImage(roadToken, fallback, 7200);
       return fallback;
     }

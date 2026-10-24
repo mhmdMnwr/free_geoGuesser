@@ -1,10 +1,29 @@
 import { Podium } from "./Podium"
+import { Icon } from "../../../shared/components/Icon"
 
-export function LeaderboardScreen({ leaderboard }: { leaderboard: any[] }) {
+export function LeaderboardScreen({
+  leaderboard,
+  onClose,
+}: {
+  leaderboard: any[]
+  onClose?: () => void
+}) {
   const safeList = Array.isArray(leaderboard) ? leaderboard : []
 
   return (
     <section className="leaderboard-view">
+      {onClose && (
+        <div className="mb-4">
+          <button
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors cursor-pointer"
+            onClick={onClose}
+            type="button"
+          >
+            <Icon name="back" size={16} />
+            <span>BACK TO STREET VIEW</span>
+          </button>
+        </div>
+      )}
       <div className="leaderboard-heading">
         <span className="section-index">LIVE EXPEDITION STANDINGS</span>
         <div className="atlas-title">SQUAD RANKINGS</div>

@@ -1,9 +1,9 @@
 import type { Screen } from "../../types/game"
 
 /**
- * Universal Cookie & Storage Persistence Engine for WAYFINDER
+ * Universal Cookie & Storage Persistence Engine for guessiha
  * Stores vital session attributes in both document.cookie and localStorage
- * to ensure state persistence across hard reloads, tab switches, and LAN re-identifications.
+ * to ensure state persistence across hard reloads, tab switches, and network re-identifications.
  */
 
 export function setCookie(name: string, value: string, days = 30): void {

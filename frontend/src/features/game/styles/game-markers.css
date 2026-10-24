@@ -1,0 +1,127 @@
+/* ==========================================================================
+   LEAFLET TARGET & GUESS MARKERS
+   ========================================================================== */
+
+.custom-target-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.target-marker-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.target-radar-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid #10b981;
+  transform: translate(-50%, -50%);
+  animation: radar-ping 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes radar-ping {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+
+.target-icon-core {
+  width: 26px;
+  height: 26px;
+  background: #020617;
+  border: 2.5px solid #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.85);
+  z-index: 2;
+}
+
+.target-label-bubble {
+  position: absolute;
+  bottom: 30px;
+  white-space: nowrap;
+  background: rgba(2, 6, 23, 0.95);
+  border: 1.5px solid #10b981;
+  color: #10b981;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.custom-guess-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guess-marker-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.guess-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+}
+
+.guess-marker-container.beacon-closest .guess-dot {
+  background: #eab308;
+  border-color: #ffffff;
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.9);
+}
+
+.guess-marker-container.beacon-local .guess-dot {
+  background: #38bdf8;
+  border-color: #ffffff;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.9);
+}
+
+.guess-marker-container.beacon-other .guess-dot {
+  background: #94a3b8;
+  border-color: #cbd5e1;
+  box-shadow: 0 0 8px rgba(148, 163, 184, 0.6);
+}
+
+.guess-label-bubble {
+  position: absolute;
+  top: 20px;
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #38bdf8;
+  color: #f1f5f9;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.guess-marker-container.beacon-closest .guess-label-bubble { border-color: #eab308; color: #fef08a; }
+.guess-marker-container.beacon-local .guess-label-bubble { border-color: #38bdf8; color: #bae6fd; }
+.guess-marker-container.beacon-other .guess-label-bubble { border-color: #64748b; color: #cbd5e1; }

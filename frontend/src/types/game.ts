@@ -2,7 +2,7 @@
 // Shared game types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ConnectionMode = "lan" | "web"
+export type ConnectionMode = "online" | "local"
 export type Screen = "select" | "browser" | "lobby" | "game" | "pending"
 
 export interface Coordinates {
@@ -12,6 +12,8 @@ export interface Coordinates {
 
 export interface Room {
   id: string
+  code?: string
+  isPrivate?: boolean
   name: string
   hostName: string
   hostIp: string | null
@@ -32,10 +34,38 @@ export interface Player {
   connected: boolean
   totalScore: number
   isHost: boolean
+  hasGuessed?: boolean
 }
 
 export interface PendingRequest {
   clientId: string
   username: string
   requestedAt: number
+}
+
+export interface CrownDemandNotice {
+  roomId: string
+  claimantUsername: string
+  claimantPublicId: string
+  timeoutSeconds: number
+}
+
+export interface CrownVoteNotice {
+  roomId: string
+  claimantUsername: string
+  claimantPublicId: string
+  currentHostUsername: string
+  timeoutSeconds: number
+  yesCount: number
+  noCount: number
+  totalEligible: number
+}
+
+export interface CrownElectionResult {
+  success: boolean
+  newHost: string
+  yesCount?: number
+  noCount?: number
+  totalEligible?: number
+  message: string
 }

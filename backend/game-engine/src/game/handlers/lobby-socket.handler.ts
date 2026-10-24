@@ -3,8 +3,16 @@ import { Socket, Server } from 'socket.io';
 import { GameService } from '../game.service';
 import { CryptoService } from '../../security/crypto.service';
 import { getClientId, getClientIp } from './connection.handler';
-import { createGameRoom, createPlayer, isCallsignTaken } from '../factories/lobby.factory';
+import {
+  createGameRoom,
+  createPlayer,
+  generateRoomCode,
+  isCallsignTaken,
+  sanitizeText,
+} from '../factories/lobby.factory';
 import { AdmissionHandler } from './admission.handler';
+
+const MAX_CUSTOM_ROOMS = 100;
 
 @Injectable()
 export class LobbySocketHandler {
@@ -20,7 +28,7 @@ export class LobbySocketHandler {
 
   handleCheckUsername(socket: Socket, data: any) {
     const raw = typeof data === 'string' ? data : data?.username;
-    const clean = String(raw || '').trim();
+    const clean = sanitizeText(raw, 18);
     const clientId = getClientId(socket);
 
     if (!clean || clean.length < 2) {
@@ -40,10 +48,15 @@ export class LobbySocketHandler {
   handleCreateLobby(socket: Socket, server: Server, data: any) {
     const ip = getClientIp(socket);
     const clientId = getClientId(socket);
-    const username = String(data?.username || 'SquadLeader').trim();
+    const username = sanitizeText(data?.username, 18, 'SquadLeader');
 
     if (!username || username.length < 2) {
       socket.emit('error_message', { message: 'Username must be at least 2 characters.' });
+      return;
+    }
+
+    if (this.gameService.roomStore.customRooms.size >= MAX_CUSTOM_ROOMS) {
+      socket.emit('error_message', { message: 'Maximum active room capacity reached. Please join an existing squad.' });
       return;
     }
 
@@ -61,7 +74,7 @@ export class LobbySocketHandler {
       return;
     }
 
-    const roomId = `LAN-${Math.floor(1000 + Math.random() * 9000)}`;
+    const roomId = generateRoomCode(this.gameService.roomStore.customRooms.keys());
     const room = createGameRoom(roomId, data?.name || `Squad ${roomId}`, clientId, ip, socket.id, username, data);
     const hostPlayer = createPlayer(clientId, ip, socket.id, username);
     room.players[clientId] = hostPlayer;
@@ -81,13 +94,33 @@ export class LobbySocketHandler {
     this.gameService.roomStore.customRooms.set(roomId, room);
     socket.join(roomId);
     socket.emit('lobby_joined', {
-      roomId, roomName: room.name, hostName: username, isHost: true, hostIp: ip,
-      role: 'HOST', serverPublicKey, players: this.gameService.getLobbyPlayers(room),
-      selectedRegion: room.selectedRegion, difficulty: room.difficulty,
-      totalRounds: room.totalRounds, status: room.status,
+      roomId,
+      code: room.code || roomId,
+      isPrivate: Boolean(room.isPrivate),
+      roomName: room.name,
+      hostName: username,
+      isHost: true,
+      hostIp: ip,
+      maxPlayers: room.maxPlayers,
+      role: 'HOST',
+      serverPublicKey,
+      players: this.gameService.getLobbyPlayers(room),
+      selectedRegion: room.selectedRegion,
+      difficulty: room.difficulty,
+      totalRounds: room.totalRounds,
+      status: room.status,
     });
     this.gameService.broadcastLobbyUpdate(server, room);
     server.emit('lobbies_list', this.gameService.getLobbiesList());
+  }
+
+  handleFindRoomByCode(socket: Socket, data: any) {
+    const rawCode = String(typeof data === 'string' ? data : data?.code || '').trim();
+    const roomSummary = this.gameService.roomStore.findRoomSummaryByCode(rawCode);
+    socket.emit('room_code_lookup_result', {
+      code: rawCode,
+      room: roomSummary,
+    });
   }
 
   handleJoinLobby(socket: Socket, server: Server, data: any) {
@@ -136,10 +169,22 @@ export class LobbySocketHandler {
     }
 
     // Queue as pending — host must approve
+    if (!targetRoom.pendingAdmissions) {
+      targetRoom.pendingAdmissions = {};
+    }
+
+    const pendingKeys = Object.keys(targetRoom.pendingAdmissions);
+    const isAlreadyPending = Boolean(targetRoom.pendingAdmissions[clientId]);
+
+    if (!isAlreadyPending && pendingKeys.length >= 8) {
+      socket.emit('error_message', { message: 'Squad admission queue is currently full. Please try again shortly.' });
+      return;
+    }
+
     targetRoom.pendingAdmissions[clientId] = {
       clientId, ip, socketId: socket.id, username,
       clientPublicKey: data?.clientPublicKey,
-      requestedAt: Date.now(),
+      requestedAt: isAlreadyPending ? targetRoom.pendingAdmissions[clientId].requestedAt : Date.now(),
     };
 
     socket.emit('admission_pending', {
@@ -147,7 +192,8 @@ export class LobbySocketHandler {
       message: 'Waiting for Squad Leader approval...',
     });
 
-    if (targetRoom.hostSocketId) {
+    // Only notify host if this is a fresh request to avoid toast/notification spam
+    if (targetRoom.hostSocketId && !isAlreadyPending) {
       server.to(targetRoom.hostSocketId).emit('admission_request', {
         roomId: targetRoom.id, clientId, username,
         requestedAt: targetRoom.pendingAdmissions[clientId].requestedAt,
@@ -163,6 +209,18 @@ export class LobbySocketHandler {
     if (!room) { if (roomId) socket.leave(roomId); return; }
 
     if (room.pendingAdmissions[clientId]) delete room.pendingAdmissions[clientId];
+
+    if (room.crownElection && (clientId === room.crownElection.claimantId || clientId === room.crownElection.targetHostId)) {
+      if (room.crownElection.hostTimeout) clearTimeout(room.crownElection.hostTimeout);
+      if (room.crownElection.votingTimeout) clearTimeout(room.crownElection.votingTimeout);
+      server.to(room.id).emit('crown_election_result', {
+        success: false,
+        newHost: room.hostName,
+        message: 'Crown candidate left the squad. Challenge cancelled.',
+      });
+      room.crownElection = null;
+      room.lastCrownElectionAt = Date.now();
+    }
 
     const wasHost = (room.hostId && clientId === room.hostId) ||
       (room.hostSocketId && socket.id === room.hostSocketId) ||

@@ -1,8 +1,12 @@
+import { useState } from "react"
 import "./mode-select.css"
 import { EffectsLayer } from "../../shared/components/EffectsLayer"
 import { Icon } from "../../shared/components/Icon"
-import { GameButton } from "../../shared/components/GameButton"
+import { FeedbackPanel } from "./components/FeedbackPanel"
+import { SupportDeveloperPanel } from "./components/SupportDeveloperPanel"
 import type { ConnectionMode } from "../../types/game"
+
+type MenuModal = "feedback" | "support" | null
 
 interface ModeSelectProps {
   isLaunching: boolean
@@ -17,113 +21,127 @@ interface ModeSelectProps {
 
 export function ModeSelect({
   isLaunching,
-  mode,
-  setMode,
   onContinue,
   username,
   setUsername,
   usernameError,
   isCheckingUsername = false,
 }: ModeSelectProps) {
+  const [activeModal, setActiveModal] = useState<MenuModal>(null)
+
+  const handlePlayClick = () => {
+    if (isCheckingUsername) return
+    if (!username.trim()) {
+      setUsername("OPERATIVE-" + Math.floor(10 + Math.random() * 90))
+    }
+    onContinue()
+  }
+
   return (
     <main className={`entry-screen ${isLaunching ? "entry-screen--launching" : ""}`}>
       <EffectsLayer />
       <div className="ambient-grid" />
-      <div className="entry-header">
-        <div className="logo" style={{ marginLeft: "auto" }}>
+
+      <header className="entry-header">
+        <div className="logo">
           <span className="logo-icon">
             <Icon name="researcher" size={26} />
           </span>
-          <span>THEgeoguesser</span>
+          <span>guessiha</span>
         </div>
-      </div>
-
-      <section className="entry-content">
-        <div className="entry-title" data-text="YOU MUST SEARCH FOR INTERNSHIP WHAT ARE YOU DOING!!!">
-          YOU MUST SEARCH FOR INTERNSHIP WHAT ARE YOU DOING!!!
-        </div>
-
-        {/* Operative Codename Input */}
-        <div className="mt-8 mb-6 max-w-md w-full">
-          <label className="block text-xs font-mono uppercase text-sky-400 mb-2 tracking-widest">
-            CODENAME
-          </label>
+        <label className="entry-operative-pill" title="Click to change your codename">
+          <span className="entry-status-dot" />
+          <span className="text-slate-400">CODENAME:</span>
           <input
-            className={`w-full bg-slate-900/90 border ${
-              usernameError ? "border-rose-500 focus:border-rose-400" : "border-slate-700 focus:border-sky-400"
-            } rounded-lg px-4 py-3 text-slate-100 font-mono text-sm tracking-wider uppercase outline-none transition shadow-inner`}
+            aria-label="Operative Codename"
+            className="bg-transparent text-sky-400 font-bold uppercase tracking-wider outline-none w-32 sm:w-40 border-b border-transparent focus:border-sky-400 transition-colors"
             maxLength={18}
             onChange={(e) => setUsername(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && username.trim() && !isCheckingUsername) {
-                onContinue()
-              }
-            }}
-            placeholder="ENTER YOUR CODENAME..."
+            placeholder="ENTER CODENAME"
             type="text"
             value={username}
           />
+        </label>
+      </header>
+
+      <section className="entry-content">
+        <div className="main-menu-left">
+          <h1 className="entry-title" data-text="guessiha">
+            guessiha
+          </h1>
+          <p className="entry-subtitle">
+            Drop into unknown roads worldwide. Read the terrain, lock your coordinates, and outscore your squad in real time.
+          </p>
+
           {usernameError && (
-            <div className="mt-2.5 p-2.5 text-xs font-mono text-rose-400 bg-rose-950/80 border border-rose-800 rounded flex items-center gap-2">
-              <span>⚠</span>
-              <span>{usernameError}</span>
+            <div className="mt-4 p-3 bg-rose-950/90 border border-rose-500 rounded-lg text-rose-300 text-xs font-mono">
+              ⚠ {usernameError}
             </div>
           )}
+
+          <nav aria-label="Game Main Menu" className="main-menu-nav">
+            <button
+              className="menu-blade menu-blade--active continue-button"
+              disabled={isCheckingUsername}
+              onClick={handlePlayClick}
+              type="button"
+            >
+              <span className="menu-blade-icon">
+                <Icon name="play" size={24} />
+              </span>
+              <span className="menu-blade-text">
+                <strong>{isCheckingUsername ? "VERIFYING..." : "PLAY"}</strong>
+                <small>ENTER SQUAD BROWSER &amp; DEPLOY INTO A MATCH</small>
+              </span>
+              <Icon name="arrow" size={20} />
+            </button>
+
+            <button
+              className="menu-blade"
+              onClick={() => setActiveModal("feedback")}
+              type="button"
+            >
+              <span className="menu-blade-icon">
+                <Icon name="message" size={24} />
+              </span>
+              <span className="menu-blade-text">
+                <strong>FEEDBACK</strong>
+                <small>REPORT BUGS, SUGGEST MAPS &amp; RATE GAMEPLAY</small>
+              </span>
+              <Icon name="arrow" size={20} />
+            </button>
+
+            <button
+              className="menu-blade"
+              onClick={() => setActiveModal("support")}
+              type="button"
+            >
+              <span className="menu-blade-icon">
+                <Icon name="heart" size={24} />
+              </span>
+              <span className="menu-blade-text">
+                <strong>SUPPORT DEVELOPER</strong>
+                <small>BACK THE PROJECT, STAR REPO &amp; SHARE WITH FRIENDS</small>
+              </span>
+              <Icon name="arrow" size={20} />
+            </button>
+          </nav>
         </div>
-
-        <div className="mode-grid">
-          <button
-            className={`mode-card ${mode === "lan" ? "mode-card--active" : ""}`}
-            onClick={() => setMode("lan")}
-            type="button"
-          >
-            <span className="mode-number">01</span>
-            <span className="mode-icon mode-icon--lan">
-              <Icon name="lan" size={34} />
-            </span>
-            <span className="mode-content">
-              <strong>MULTIPLAYER LOBBY</strong>
-              <small>Host or join match rooms with other operatives.</small>
-            </span>
-            <span className="mode-select">
-              {mode === "lan" && <Icon name="check" size={18} />}
-            </span>
-          </button>
-
-          <button
-            className={`mode-card ${mode === "web" ? "mode-card--active" : ""}`}
-            onClick={() => setMode("web")}
-            type="button"
-          >
-            <span className="mode-number">02</span>
-            <span className="mode-icon">
-              <Icon name="globe" size={34} />
-            </span>
-            <span className="mode-content">
-              <strong>DIRECT LINK</strong>
-              <small>Connect directly via host IP address.</small>
-            </span>
-            <span className="mode-select">
-              {mode === "web" && <Icon name="check" size={18} />}
-            </span>
-          </button>
-        </div>
-
-        <GameButton
-          className="continue-button"
-          disabled={!username.trim() || isCheckingUsername}
-          icon="arrow"
-          onClick={onContinue}
-        >
-          {isLaunching
-            ? "ESTABLISHING UPLINK..."
-            : isCheckingUsername
-              ? "VERIFYING CODENAME..."
-              : username.trim()
-                ? "ENTER SQUAD BROWSER"
-                : "ENTER CODENAME TO PROCEED"}
-        </GameButton>
       </section>
+
+      {activeModal && (
+        <div className="menu-modal-backdrop" onClick={() => setActiveModal(null)}>
+          <div className="menu-modal-box" onClick={(e) => e.stopPropagation()}>
+            {activeModal === "feedback" ? (
+              <FeedbackPanel onBackToPlay={() => setActiveModal(null)} username={username} />
+            ) : (
+              <SupportDeveloperPanel onBackToPlay={() => setActiveModal(null)} />
+            )}
+          </div>
+        </div>
+      )}
     </main>
   )
 }
+
+export default ModeSelect

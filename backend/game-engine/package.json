@@ -1,7 +1,7 @@
 {
-  "name": "lan-guessr-game-engine",
+  "name": "guessiha-game-engine",
   "version": "1.0.0",
-  "description": "LAN-Guessr Core Game Engine & Real-Time Socket.IO Microservice",
+  "description": "geussiha Core Game Engine & Real-Time Socket.IO Microservice",
   "scripts": {
     "build": "nest build",
     "start": "nest start",

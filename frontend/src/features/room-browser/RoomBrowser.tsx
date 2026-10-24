@@ -1,85 +1,87 @@
+import { useState } from "react"
 import "./room-browser.css"
 import { EffectsLayer } from "../../shared/components/EffectsLayer"
 import { Icon } from "../../shared/components/Icon"
 import { GameButton } from "../../shared/components/GameButton"
+import { RoomRow } from "./components/RoomRow"
+import { RoomSearchBar } from "./components/RoomSearchBar"
+import BrowserHeader from "./components/BrowserHeader"
 import type { Room } from "../../types/game"
 
 interface RoomBrowserProps {
   lobbies: Room[]
+  searchedRoom?: Room | null
   username: string
   errorMessage?: string | null
   onBack: () => void
   onCreate: () => void
   onJoin: (room: Room) => void
+  onSearchCode?: (code: string) => void
+  onJoinByCode?: (code: string) => void
   onUsernameChange?: (name: string) => void
 }
 
-function renderStatusBadge(room: Room) {
-  if (room.status === "ROUND_ACTIVE") {
-    return (
-      <span className="status-badge status-badge--active">
-        ⚔ MATCH {room.currentRound ? `(R${room.currentRound}/${room.totalRounds})` : "ACTIVE"}
-      </span>
-    )
-  }
-  if (room.status === "ROUND_COUNTDOWN") {
-    return <span className="status-badge status-badge--countdown">⏱ COUNTDOWN</span>
-  }
-  if (room.status === "ROUND_RESULTS") {
-    return <span className="status-badge status-badge--results">📊 SCORING</span>
-  }
-  if (room.status === "GAME_OVER") {
-    return <span className="status-badge status-badge--ended">🏆 FINISHED</span>
-  }
-  return <span className="status-badge status-badge--lobby">● OPEN LOBBY</span>
-}
+export function RoomBrowser({
+  lobbies,
+  searchedRoom,
+  username,
+  errorMessage,
+  onBack,
+  onCreate,
+  onJoin,
+  onSearchCode,
+  onJoinByCode,
+  onUsernameChange,
+}: RoomBrowserProps) {
+  const [searchQuery, setSearchQuery] = useState("")
 
-export function RoomBrowser({ lobbies, username, errorMessage, onBack, onCreate, onJoin, onUsernameChange }: RoomBrowserProps) {
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val)
+    onSearchCode?.(val.trim())
+  }
+
+  const trimmedQuery = searchQuery.trim()
+  const isSixDigitCode = /^\d{6}$/.test(trimmedQuery)
+
+  const filteredLobbies = lobbies.filter((room) => {
+    if (!trimmedQuery) return true
+    const q = trimmedQuery.toLowerCase()
+    return room.name.toLowerCase().includes(q) || (room.hostName || "").toLowerCase().includes(q) || (room.code || room.id || "").toLowerCase().includes(q)
+  })
+
+  const displayedRooms = [...filteredLobbies]
+  if (searchedRoom && !displayedRooms.some((r) => r.id === searchedRoom.id)) displayedRooms.unshift(searchedRoom)
+
+  const handleQuickJoinCode = () => {
+    if (!trimmedQuery) return
+    if (searchedRoom) onJoin(searchedRoom)
+    else if (displayedRooms.length === 1) onJoin(displayedRooms[0])
+    else onJoinByCode?.(trimmedQuery)
+  }
+
   return (
     <main className="browser-screen">
       <EffectsLayer />
       <div className="ambient-grid" />
-      <header className="lobby-nav">
-        <div className="flex items-center gap-3">
-          <GameButton icon="back" onClick={onBack} variant="ghost" style={{ marginLeft: 0 }}>
-            MAIN MENU
-          </GameButton>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 border border-slate-700 rounded-lg text-xs font-mono">
-            <span className="text-slate-400">CODENAME:</span>
-            <input
-              type="text"
-              maxLength={18}
-              value={username}
-              onChange={(e) => onUsernameChange?.(e.target.value)}
-              className="bg-transparent text-cyan-400 font-bold uppercase tracking-wider outline-none w-36 border-b border-transparent focus:border-cyan-400 transition-colors"
-              title="Click to edit your codename"
-              placeholder="YOUR CODENAME"
-            />
-          </div>
-        </div>
-        <div className="logo" style={{ marginLeft: "auto" }}>
-          <span className="logo-icon">
-            <Icon name="researcher" size={24} />
-          </span>
-          <span>THEgeoguesser</span>
-        </div>
-      </header>
+      <BrowserHeader onBack={onBack} onUsernameChange={onUsernameChange} username={username} />
 
       <div className="browser-content">
         <section className="browser-heading">
           <div>
-            <div className="section-index">/ LAN EXPEDITION REGISTRY</div>
-            <div className="lobby-title browser-title" data-text="ACTIVE SQUADS">
-              AVAILABLE SQUADS
-            </div>
+            <div className="lobby-title browser-title" data-text="ACTIVE SQUADS">AVAILABLE SQUADS</div>
             <div className="lobby-subtitle">
-              {lobbies.length} squads discovered on your local network. Multiple games can run concurrently. Any operative can host 👑.
+              {lobbies.length} squads available. Search or enter a 6-digit room code below to jump in.
             </div>
           </div>
-          <GameButton icon="plus" onClick={onCreate}>
-            CREATE SQUAD ROOM
-          </GameButton>
+          <div className="hidden sm:block">
+            <GameButton icon="plus" onClick={onCreate}>CREATE SQUAD</GameButton>
+          </div>
         </section>
+
+        <RoomSearchBar
+          isSixDigitCode={isSixDigitCode} onQuickJoin={handleQuickJoinCode}
+          onSearchChange={handleSearchChange} searchQuery={searchQuery} trimmedQuery={trimmedQuery}
+        />
 
         {errorMessage && (
           <div className="mb-4 p-3 bg-rose-950/90 border border-rose-700 rounded-lg text-rose-300 font-mono text-sm flex items-center gap-3">
@@ -97,79 +99,31 @@ export function RoomBrowser({ lobbies, username, errorMessage, onBack, onCreate,
             <span />
           </div>
           <div className="room-list">
-            {lobbies.length === 0 ? (
+            {displayedRooms.length === 0 ? (
               <div className="p-12 text-center text-slate-400 font-mono text-sm">
-                NO ACTIVE SQUADS FOUND. CLICK "CREATE SQUAD ROOM" TO HOST!
+                {trimmedQuery
+                  ? isSixDigitCode
+                    ? `NO ACTIVE ROOM FOUND WITH 6-DIGIT CODE "${trimmedQuery}". CHECK THE CODE OR CLICK "JOIN ROOM #${trimmedQuery}".`
+                    : `NO SQUADS MATCHING "${trimmedQuery}". ENTER A 6-DIGIT CODE TO UNLOCK A PRIVATE SQUAD.`
+                  : "NO ACTIVE PUBLIC SQUADS FOUND. ENTER A 6-DIGIT CODE ABOVE OR TAP \"CREATE SQUAD\" TO HOST!"}
               </div>
             ) : (
-              lobbies.map((room, index) => {
-                const occupancy = Math.round((room.playerCount / room.maxPlayers) * 100)
-                const isFull = room.playerCount >= room.maxPlayers
-
-                return (
-                  <div
-                    className={`room-row room-row--${(index % 4) + 1} cursor-pointer`}
-                    key={room.id}
-                    onClick={() => {
-                      if (!isFull) onJoin(room)
-                    }}
-                  >
-                    <div className="room-name">
-                      <span className="room-signal">
-                        <Icon name="lan" size={20} />
-                      </span>
-                      <span>
-                        <strong className="flex items-center gap-2">
-                          {room.name}
-                          <span className="text-amber-400 text-xs font-normal">
-                            👑 {room.hostName}
-                          </span>
-                        </strong>
-                        <small>{room.id}</small>
-                      </span>
-                    </div>
-
-                    <div className="room-status-cell">
-                      {renderStatusBadge(room)}
-                    </div>
-
-                    <div className="room-players">
-                      <span>
-                        <Icon name="players" size={17} />
-                        <strong>{room.playerCount}</strong> / {room.maxPlayers}
-                      </span>
-                      <i>
-                        <b className={`occupancy-${occupancy}`} />
-                      </i>
-                    </div>
-
-                    <span className="room-map uppercase font-mono text-xs text-sky-400">
-                      {room.selectedRegion || "WORLD"} · {room.difficulty || "ALL"}
-                    </span>
-
-                    {isFull ? (
-                      <button className="btn-full" disabled type="button">
-                        FULL
-                      </button>
-                    ) : (
-                      <GameButton
-                        icon="arrow"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onJoin(room)
-                        }}
-                        variant="outline"
-                      >
-                        {room.status === "LOBBY" ? "JOIN SQUAD" : "JOIN MATCH"}
-                      </GameButton>
-                    )}
-                  </div>
-                )
-              })
+              displayedRooms.map((room, index) => (
+                <RoomRow index={index} key={room.id} onJoin={onJoin} room={room} />
+              ))
             )}
           </div>
         </section>
       </div>
+
+      <div className="mobile-floating-action sm:hidden">
+        <button className="mobile-fab-btn" onClick={onCreate} type="button">
+          <Icon name="plus" size={18} />
+          <span>CREATE SQUAD</span>
+        </button>
+      </div>
     </main>
   )
 }
+
+export default RoomBrowser

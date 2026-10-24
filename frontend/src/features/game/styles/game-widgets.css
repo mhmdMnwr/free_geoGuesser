@@ -1,0 +1,123 @@
+/* ==========================================================================
+   MID-GAME ADMISSION ALERT & LIVE STANDINGS WIDGET — Unified Game Palette
+   ========================================================================== */
+
+.game-timer ~ .game-pending-admission-pill {
+  top: 136px;
+}
+
+.game-pending-admission-pill {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(14, 20, 23, 0.96);
+  border: 1px solid var(--cyan);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.75), 0 0 20px rgba(67, 220, 255, 0.18);
+  border-radius: 8px;
+  padding: 12px 14px;
+  min-width: 290px;
+  max-width: 380px;
+  backdrop-filter: blur(14px);
+  animation: interface-rise 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.game-pending-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--heading);
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  color: var(--cyan);
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+
+.game-pending-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--acid);
+  box-shadow: 0 0 8px var(--acid);
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.game-pending-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.game-pending-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #10171a;
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.game-pending-info { display: flex; flex-direction: column; min-width: 0; }
+.game-pending-username { font-family: var(--heading); font-size: 14px; font-weight: 700; color: #f2f5f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-pending-sub { font-family: var(--heading); font-size: 11px; color: var(--muted); }
+.game-pending-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.game-admission-admit-btn,
+.game-admission-reject-btn {
+  font-family: var(--heading);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.game-admission-admit-btn { background: var(--acid-soft); border: 1px solid var(--acid); color: var(--acid); }
+.game-admission-admit-btn:hover { background: var(--acid); color: #0a1008; }
+.game-admission-reject-btn { background: rgba(244, 63, 94, 0.15); border: 1px solid #f43f5e; color: #fb7185; }
+.game-admission-reject-btn:hover { background: #e11d48; color: #ffffff; }
+
+.live-standings-widget {
+  position: absolute;
+  top: 88px;
+  right: 24px;
+  width: 290px;
+  max-width: calc(100vw - 48px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+  background: rgba(14, 20, 23, 0.9);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  padding: 12px 14px;
+  animation: slide-from-right 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (max-width: 767px) {
+  .live-standings-widget {
+    display: none !important;
+  }
+}
+
+.live-standings-widget--atlas { z-index: 1000; }
+.live-standings-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acid); box-shadow: 0 0 8px var(--acid); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
+.live-standings-sub { display: flex; align-items: center; justify-content: space-between; font-family: var(--heading); font-size: 12px; color: var(--muted); padding: 0 2px 4px; border-bottom: 1px solid #1d262a; }
+.live-standings-list { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; max-height: 180px; }
+.live-standings-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-radius: 6px; background: #10171a; border: 1px solid var(--line); transition: all 0.2s ease; }
+.live-standings-row--you { background: var(--acid-soft); border-color: rgba(199, 255, 61, 0.5); }

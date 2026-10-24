@@ -8,7 +8,7 @@ export class StreetviewTemplateService {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tactical Street View Recon</title>
+  <title>geussiha</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #020617; }
@@ -101,7 +101,7 @@ export class StreetviewTemplateService {
       <div class="sv-shield-brand">
         <div class="sv-shield-title">
           <span class="sv-shield-dot"></span>
-          <span>Tactical Recon Uplink</span>
+          <span>Street View Uplink</span>
         </div>
         <div class="sv-shield-sub">
           SIGNAL ENCRYPTED // ANTI-SPOILER ACTIVE

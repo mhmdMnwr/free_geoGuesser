@@ -1,7 +1,7 @@
 {
-  "name": "lan-guessr-road-proxy",
+  "name": "guessiha-road-proxy",
   "version": "1.0.0",
-  "description": "LAN-Guessr Media & Road Proxy Microservice",
+  "description": "geussiha Media & Road Proxy Microservice",
   "scripts": {
     "build": "nest build",
     "start": "nest start",

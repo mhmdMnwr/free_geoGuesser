@@ -11,7 +11,24 @@ export class TimerService {
       clearInterval(room.countdownInterval);
       room.countdownInterval = null;
     }
+    if (room.maxRoundTimeout) {
+      clearTimeout(room.maxRoundTimeout);
+      room.maxRoundTimeout = null;
+    }
     room.countdownSeconds = null;
+  }
+
+  startMaxRoundTimer(room: GameRoom, maxSeconds: number, onExpire: () => void) {
+    if (room.maxRoundTimeout) {
+      clearTimeout(room.maxRoundTimeout);
+      room.maxRoundTimeout = null;
+    }
+    if (maxSeconds <= 0) return;
+    room.maxRoundTimeout = setTimeout(() => {
+      room.maxRoundTimeout = null;
+      this.logger.log(`[Room ${room.id}] Max round time (${maxSeconds}s) elapsed with no guesses. Ending round.`);
+      onExpire();
+    }, maxSeconds * 1000);
   }
 
   startCountdown(

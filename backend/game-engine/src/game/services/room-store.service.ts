@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GameRoom, Player } from '../game.types';
+import { toPublicPlayerId } from '../factories/lobby.factory';
 
 @Injectable()
 export class RoomStoreService {
@@ -10,7 +11,7 @@ export class RoomStoreService {
   private createDefaultRoom(): GameRoom {
     return {
       id: 'LAN-01',
-      name: 'Default LAN Base',
+      name: 'Base Station',
       status: 'LOBBY',
       hostId: null,
       hostIp: null,
@@ -30,18 +31,30 @@ export class RoomStoreService {
       roundUplinkToken: null,
       countdownSeconds: null,
       countdownInterval: null,
+      maxRoundTimeout: null,
+      recentLocationKeys: new Set<string>(),
       firstGuesserName: null,
       lastRoundResults: null,
       lastGameOver: null,
       currentSharedImage: null,
       sharedImageTimestamp: null,
       sharedImageCaption: '',
+      crownElection: null,
+      lastCrownElectionAt: 0,
     };
   }
 
   getRoom(roomId?: string): GameRoom | null {
-    if (!roomId || roomId === 'LAN-01') return this.state;
-    return this.customRooms.get(roomId) || null;
+    if (!roomId) return null;
+    const clean = String(roomId).trim();
+    if (!clean) return null;
+    if (clean === 'LAN-01') return this.state;
+    const direct = this.customRooms.get(clean);
+    if (direct) return direct;
+    for (const r of this.customRooms.values()) {
+      if (r.code === clean || r.id === clean) return r;
+    }
+    return null;
   }
 
   /** Returns the custom room this clientId is currently hosting, or null. */
@@ -119,7 +132,7 @@ export class RoomStoreService {
           (targetRoom.hostSocketId && p.socketId === targetRoom.hostSocketId) ||
           (!targetRoom.hostId && p.ip === targetRoom.hostIp);
         return {
-          id: p.id || p.ip,
+          id: p.publicId || toPublicPlayerId(p.id || p.ip),
           ip: p.ip,
           username: p.username,
           connected: p.connected,
@@ -127,6 +140,35 @@ export class RoomStoreService {
           isHost: Boolean(isHost),
         };
       });
+  }
+
+  formatRoomSummary(r: GameRoom, playerCount: number) {
+    return {
+      id: r.id,
+      code: r.code || r.id,
+      isPrivate: Boolean(r.isPrivate),
+      name: r.name,
+      hostName: r.hostName || 'HOST',
+      hostIp: r.hostIp,
+      playerCount,
+      maxPlayers: r.maxPlayers || 8,
+      selectedRegion: r.selectedRegion || 'all',
+      difficulty: r.difficulty || 'all',
+      totalRounds: r.totalRounds || 5,
+      currentRound: r.currentRound || 0,
+      status: r.status,
+      ping: 3,
+    };
+  }
+
+  findRoomSummaryByCode(code?: string): any | null {
+    const room = this.getRoom(code);
+    if (!room || room.id === 'LAN-01') return null;
+    const activePlayers = Object.values(room.players).filter(
+      (p) => p && (p.connected === true || (p.lastDisconnectedAt && Date.now() - p.lastDisconnectedAt < 5000)),
+    );
+    if (activePlayers.length === 0) return null;
+    return this.formatRoomSummary(room, activePlayers.length);
   }
 
   getLobbiesList(): any[] {
@@ -140,20 +182,8 @@ export class RoomStoreService {
         continue;
       }
       this.ensureActiveHost(r);
-      valid.push({
-        id: r.id,
-        name: r.name,
-        hostName: r.hostName || 'HOST',
-        hostIp: r.hostIp,
-        playerCount: activePlayers.length,
-        maxPlayers: r.maxPlayers || 8,
-        selectedRegion: r.selectedRegion || 'all',
-        difficulty: r.difficulty || 'all',
-        totalRounds: r.totalRounds || 5,
-        currentRound: r.currentRound || 0,
-        status: r.status,
-        ping: 3,
-      });
+      if (r.isPrivate) continue;
+      valid.push(this.formatRoomSummary(r, activePlayers.length));
     }
     return valid;
   }

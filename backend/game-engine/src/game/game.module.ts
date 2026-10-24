@@ -15,6 +15,7 @@ import { MatchParamsHandler } from './handlers/match-params.handler';
 import { LegacyAdmissionHandler } from './handlers/legacy-admission.handler';
 import { GameParticipationHandler } from './handlers/game-participation.handler';
 import { AdmissionHandler } from './handlers/admission.handler';
+import { CrownElectionHandler } from './handlers/crown-election.handler';
 import { SecurityModule } from '../security/security.module';
 import { RedisModule } from '../redis/redis.module';
 import { GeoDatabaseModule } from '../geo-database/geo-database.module';
@@ -38,6 +39,7 @@ import { GeoDatabaseModule } from '../geo-database/geo-database.module';
     LegacyAdmissionHandler,
     GameParticipationHandler,
     AdmissionHandler,
+    CrownElectionHandler,
   ],
   exports: [GameService],
 })

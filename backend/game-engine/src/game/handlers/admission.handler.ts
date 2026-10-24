@@ -54,11 +54,21 @@ export class AdmissionHandler {
     }
 
     socket.emit('lobby_joined', {
-      roomId: room.id, roomName: room.name, hostName: room.hostName,
-      isHost: Boolean(isHost), hostIp: room.hostIp, role: isHost ? 'HOST' : 'OPERATIVE',
-      serverPublicKey, players: this.gameService.getLobbyPlayers(room),
-      selectedRegion: room.selectedRegion, difficulty: room.difficulty,
-      totalRounds: room.totalRounds, status: room.status,
+      roomId: room.id,
+      code: room.code || room.id,
+      isPrivate: Boolean(room.isPrivate),
+      roomName: room.name,
+      hostName: room.hostName,
+      isHost: Boolean(isHost),
+      hostIp: room.hostIp,
+      maxPlayers: room.maxPlayers,
+      role: isHost ? 'HOST' : 'OPERATIVE',
+      serverPublicKey,
+      players: this.gameService.getLobbyPlayers(room),
+      selectedRegion: room.selectedRegion,
+      difficulty: room.difficulty,
+      totalRounds: room.totalRounds,
+      status: room.status,
     });
     this.gameService.broadcastLobbyUpdate(server, room);
     if (!isReconnect) {

@@ -1,8 +1,10 @@
 import { Socket } from 'socket.io';
 
 export function getClientIp(socket: Socket): string {
-  const queryIp = socket.handshake.query?.mockIp as string;
-  if (queryIp) return queryIp;
+  if (process.env.NODE_ENV !== 'production') {
+    const queryIp = socket.handshake.query?.mockIp as string;
+    if (queryIp) return queryIp;
+  }
 
   const header = (socket.handshake.headers['x-forwarded-for'] as string) || '';
   if (header) {
@@ -14,5 +16,7 @@ export function getClientIp(socket: Socket): string {
 }
 
 export function getClientId(socket: Socket): string {
-  return (socket.handshake.query?.clientId as string) || socket.id;
+  const authId = socket.handshake.auth?.clientId as string;
+  const queryId = socket.handshake.query?.clientId as string;
+  return authId || queryId || socket.id;
 }

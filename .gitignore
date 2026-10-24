@@ -4,3 +4,10 @@ dist/
 **/dist/
 .DS_Store
 *.log
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+

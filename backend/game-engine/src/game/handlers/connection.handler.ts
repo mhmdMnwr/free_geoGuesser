@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Socket, Server } from 'socket.io';
 import { GameService } from '../game.service';
 import { GameRoom } from '../game.types';
 import { getClientId, getClientIp } from '../utils/client-info.util';
+import { toPublicPlayerId } from '../factories/lobby.factory';
+import { CrownElectionHandler } from './crown-election.handler';
 
 export { getClientId, getClientIp } from '../utils/client-info.util';
 
@@ -11,7 +13,11 @@ export class ConnectionHandler {
   private readonly logger = new Logger(ConnectionHandler.name);
   private disconnectTimeouts = new Map<string, NodeJS.Timeout>();
 
-  constructor(private readonly gameService: GameService) {}
+  constructor(
+    private readonly gameService: GameService,
+    @Inject(forwardRef(() => CrownElectionHandler))
+    private readonly crownElectionHandler: CrownElectionHandler,
+  ) {}
 
   handleConnection(socket: Socket, server: Server) {
     const ip = getClientIp(socket);
@@ -60,9 +66,12 @@ export class ConnectionHandler {
       const isHost = existingRoom.hostId === clientId || existingRoom.hostSocketId === socket.id;
       socket.emit('lobby_joined', {
         roomId: existingRoom.id,
+        code: existingRoom.code || existingRoom.id,
+        isPrivate: Boolean(existingRoom.isPrivate),
         roomName: existingRoom.name,
         hostName: existingRoom.hostName,
         hostIp: existingRoom.hostIp,
+        maxPlayers: existingRoom.maxPlayers,
         isHost: Boolean(isHost),
         role: isHost ? 'HOST' : 'OPERATIVE',
         players: this.gameService.getLobbyPlayers(existingRoom),
@@ -150,6 +159,10 @@ export class ConnectionHandler {
   }
 
   finalizeDisconnect(clientId: string, room: GameRoom, server: Server, socketId?: string) {
+    if (room.crownElection && (clientId === room.crownElection.claimantId || clientId === room.crownElection.targetHostId)) {
+      this.crownElectionHandler.cancelElection(room, server, 'Participant disconnected. Crown challenge cancelled.');
+    }
+
     const playerKey = Object.keys(room.players).find(
       (k) => k === clientId || room.players[k]?.id === clientId || room.players[k]?.socketId === socketId,
     );
@@ -175,7 +188,7 @@ export class ConnectionHandler {
     server.to(room.id).emit('player_left', {
       roomId: room.id,
       username: player.username,
-      id: clientId,
+      id: player.publicId || toPublicPlayerId(clientId),
       remainingCount: remaining.length,
       hostIp: room.hostIp,
     });

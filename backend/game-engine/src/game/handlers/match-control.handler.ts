@@ -3,6 +3,7 @@ import { Socket, Server } from 'socket.io';
 import { GameService } from '../game.service';
 import { getClientId, getClientIp } from './connection.handler';
 import { GameRoom } from '../game.types';
+import { toPublicPlayerId } from '../factories/lobby.factory';
 
 @Injectable()
 export class MatchControlHandler {
@@ -29,7 +30,6 @@ export class MatchControlHandler {
   async handleNextRound(socket: Socket, server: Server, room: GameRoom) {
     if (room.status !== 'ROUND_RESULTS') return;
 
-    const ip = getClientIp(socket);
     const clientId = getClientId(socket);
     const isAuthorized =
       (room.hostId && clientId === room.hostId) ||
@@ -41,8 +41,12 @@ export class MatchControlHandler {
     }
 
     if (room.currentRound < room.totalRounds) {
-      await this.gameService.roundCoordinator.startRound(room.currentRound + 1, server, room);
-      server.emit('lobbies_list', this.gameService.getLobbiesList());
+      try {
+        await this.gameService.roundCoordinator.startRound(room.currentRound + 1, server, room);
+        server.emit('lobbies_list', this.gameService.getLobbiesList());
+      } catch (err: any) {
+        socket.emit('error_message', { message: 'Failed to advance to the next round.' });
+      }
     } else {
       room.status = 'GAME_OVER';
       const sorted = Object.values(room.players)
@@ -50,7 +54,7 @@ export class MatchControlHandler {
         .sort((a, b) => b.totalScore - a.totalScore);
 
       const leaderboard = sorted.map((p) => ({
-        id: p.id || p.ip,
+        id: p.publicId || toPublicPlayerId(p.id || p.ip),
         username: p.username,
         ip: p.ip,
         totalScore: p.totalScore,

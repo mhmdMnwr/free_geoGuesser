@@ -1,7 +1,7 @@
 {
-  "name": "lan-guessr-lobby-service",
+  "name": "guessiha-lobby-service",
   "version": "1.0.0",
-  "description": "LAN-Guessr Lobby & Presence Microservice",
+  "description": "geussiha Lobby & Presence Microservice",
   "scripts": {
     "build": "nest build",
     "start": "nest start",

@@ -1,0 +1,137 @@
+/* ==========================================================================
+   LEADERBOARD, PODIUM & STANDING ROWS — Unified Game Palette
+   ========================================================================== */
+
+.leaderboard-view {
+  min-height: calc(100vh - 76px);
+  position: relative;
+  padding: 38px max(34px, calc((100vw - 1180px) / 2));
+  overflow: auto;
+  background:
+    radial-gradient(circle at 72% 34%, rgba(67, 220, 255, 0.07), transparent 30%),
+    linear-gradient(135deg, #0b1114, #070b0d);
+  animation: interface-rise 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.leaderboard-heading { max-width: 560px; }
+.leaderboard-heading p { margin-top: 10px; color: var(--muted); font-size: 14px; }
+.atlas-title { margin-top: 8px; font-family: var(--heading); font-size: clamp(42px, 5vw, 64px); line-height: 0.95; font-weight: 800; color: #ffffff; }
+
+.podium {
+  height: 220px;
+  margin-top: 22px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+}
+
+.podium-player {
+  width: 170px;
+  position: relative;
+  padding: 18px 12px 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 12px 12px 0 0;
+  background: rgba(14, 20, 23, 0.85);
+}
+
+.podium-player--first {
+  height: 208px;
+  border-color: rgba(199, 255, 61, 0.5);
+  background: linear-gradient(180deg, rgba(199, 255, 61, 0.14), rgba(14, 20, 23, 0.9));
+}
+
+.podium-player--second { height: 170px; }
+.podium-player--third  { height: 142px; }
+
+.podium-player .avatar {
+  width: 48px;
+  height: 48px;
+}
+
+.podium-player strong {
+  margin-top: 9px;
+  font-family: var(--heading);
+  font-size: 15px;
+  letter-spacing: 0.7px;
+}
+
+.podium-player small {
+  color: var(--acid);
+  font-family: var(--heading);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.podium-player > i {
+  margin-top: auto;
+  color: rgba(242, 245, 240, 0.12);
+  font-family: var(--heading);
+  font-size: 54px;
+  line-height: 0.8;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.standing-list {
+  max-width: 900px;
+  margin: 16px auto 0;
+}
+
+.standing-row {
+  min-height: 66px;
+  padding: 0 18px;
+  display: grid;
+  grid-template-columns: 38px 42px 1fr 120px;
+  align-items: center;
+  gap: 13px;
+  border-bottom: 1px solid var(--line);
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.standing-row:hover {
+  background: rgba(199, 255, 61, 0.05);
+  transform: translateX(4px);
+}
+
+.standing-row--you {
+  border: 1px solid rgba(199, 255, 61, 0.4);
+  border-radius: 8px;
+  background: var(--acid-soft);
+}
+
+.standing-rank {
+  color: var(--muted);
+  font-family: var(--heading);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.standing-row .avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 12px;
+}
+
+.standing-name { display: flex; flex-direction: column; }
+
+.standing-name strong,
+.standing-score {
+  font-family: var(--heading);
+  font-size: 16px;
+  letter-spacing: 0.6px;
+}
+
+.standing-name small {
+  color: var(--muted);
+  font-family: var(--heading);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.standing-row--you .standing-score { color: var(--acid); }
+.standing-score { text-align: right; color: var(--cyan); }

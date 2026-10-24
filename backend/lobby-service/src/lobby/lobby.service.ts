@@ -45,7 +45,7 @@ export class LobbyService {
   }
 
   async createLobby(dto: CreateLobbyDto, clientIp: string) {
-    const id = `LAN-${Math.floor(1000 + Math.random() * 9000)}`;
+    const id = String(Math.floor(100000 + Math.random() * 900000));
     const hostId = `host_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const serverEcdh = this.crypto.generateEcdhKeyPair();
     const aesKey = this.crypto.deriveAesKey(serverEcdh.privateKey, dto.clientPublicKey);

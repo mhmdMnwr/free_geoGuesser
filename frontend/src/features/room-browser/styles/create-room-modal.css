@@ -1,0 +1,132 @@
+/* ==========================================================================
+   CREATE SQUAD MODAL & STATUS BADGES — Unified Game Palette
+   ========================================================================== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 10, 0.86);
+  backdrop-filter: blur(10px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-dialog {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--acid);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(199, 255, 61, 0.08);
+  max-width: 540px;
+  width: 100%;
+  padding: 28px;
+  position: relative;
+  color: #f2f5f0;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+
+.modal-title {
+  font-family: var(--heading);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--acid);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-field {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-label {
+  font-family: var(--heading);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.modal-input,
+.modal-select {
+  background: #090e10;
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+  color: #f2f5f0;
+  font-family: var(--heading);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-select {
+  appearance: none;
+  padding-right: 38px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c7ff3d' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.modal-input:focus,
+.modal-select:focus {
+  border-color: var(--acid);
+  box-shadow: 0 0 0 2px var(--acid-soft);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--heading);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+}
+
+.status-badge--lobby { background: var(--acid-soft); color: var(--acid); border: 1px solid rgba(199, 255, 61, 0.4); }
+.status-badge--active { background: rgba(67, 220, 255, 0.12); color: var(--cyan); border: 1px solid rgba(67, 220, 255, 0.4); }
+.status-badge--countdown { background: rgba(255, 158, 77, 0.14); color: #ff9e4d; border: 1px solid rgba(255, 158, 77, 0.4); }
+.status-badge--results { background: rgba(181, 150, 255, 0.14); color: #b596ff; border: 1px solid rgba(181, 150, 255, 0.4); }
+.status-badge--ended { background: rgba(131, 144, 150, 0.14); color: var(--muted); border: 1px solid var(--line); }
+
+.btn-full {
+  background: #131b1e;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  font-family: var(--heading);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: not-allowed;
+  text-transform: uppercase;
+}

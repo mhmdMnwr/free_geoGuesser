@@ -21,31 +21,17 @@ export class HostActionHandler {
 
     const targetId = data?.targetIp || data?.targetId;
     const target = Object.values(room.players).find(
-      (p) => p && (p.ip === targetId || p.id === targetId),
+      (p) => p && (p.publicId === targetId || p.id === targetId || p.ip === targetId),
     );
     if (!target || target.connected !== true) {
       socket.emit('error_message', { message: 'Cannot transfer host: targeted operative is not connected.' });
       return;
     }
 
-    const prevHostName = room.hostName || 'Host';
-    room.hostIp = target.ip;
-    room.hostId = target.id;
-    room.hostSocketId = target.socketId;
-    room.hostName = target.username;
-
-    const payload = {
-      previousHost: prevHostName,
-      previousHostIp: ip,
-      newHost: target.username,
-      newHostIp: target.ip,
-      newHostId: target.id,
-    };
-    server.to(room.id).emit('host_transferred', payload);
-    this.gameService.broadcastLobbyUpdate(server, room);
+    this.gameService.transferHost(room, target, server, ip);
   }
 
-  handleClaimHost(socket: Socket, room: GameRoom) {
+  handleClaimHost(socket: Socket, server: Server, room: GameRoom) {
     const ip = getClientIp(socket);
     const clientId = getClientId(socket);
     this.gameService.ensureActiveHost(room);
@@ -53,6 +39,15 @@ export class HostActionHandler {
     const host = room.hostId ? room.players[room.hostId] : room.hostIp ? room.players[room.hostIp] : null;
     if (host && host.connected === true) {
       socket.emit('error_message', { message: `Squad leadership is actively held by ${host.username}.` });
+      return;
+    }
+
+    // Protection against hijacking during brief network blip or page refresh (30s grace period)
+    if (host && host.lastDisconnectedAt && Date.now() - host.lastDisconnectedAt < 30000) {
+      const remainingSec = Math.ceil((30000 - (Date.now() - host.lastDisconnectedAt)) / 1000);
+      socket.emit('error_message', {
+        message: `Squad leader disconnected recently. Reconnection grace period active (${remainingSec}s remaining).`,
+      });
       return;
     }
 
@@ -64,10 +59,10 @@ export class HostActionHandler {
     room.hostSocketId = socket.id;
     room.hostName = player.username;
     socket.emit('host_claimed', { success: true, hostIp: ip });
+    this.gameService.broadcastLobbyUpdate(server, room);
   }
 
   handleHostShareImage(socket: Socket, server: Server, room: GameRoom, data: any) {
-    const ip = getClientIp(socket);
     const clientId = getClientId(socket);
     const isHost = (room.hostId && clientId === room.hostId) || (room.hostSocketId && socket.id === room.hostSocketId);
     if (!isHost) {
@@ -75,9 +70,20 @@ export class HostActionHandler {
       return;
     }
 
-    room.currentSharedImage = data?.image || null;
+    const rawImage = typeof data?.image === 'string' ? data.image.trim() : '';
+    if (rawImage) {
+      const isSafeDataUri = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/i.test(rawImage);
+      if (!isSafeDataUri || rawImage.length > 256000) {
+        socket.emit('error_message', {
+          message: 'Invalid image format or size. Only inline PNG/JPEG/WEBP data URIs under 250KB are allowed.',
+        });
+        return;
+      }
+    }
+
+    room.currentSharedImage = rawImage || null;
     room.sharedImageTimestamp = Date.now();
-    room.sharedImageCaption = data?.caption || '';
+    room.sharedImageCaption = String(data?.caption || '').slice(0, 140);
 
     server.to(room.id).emit('shared_image_updated', {
       image: room.currentSharedImage,
@@ -88,7 +94,6 @@ export class HostActionHandler {
   }
 
   handleKickPlayer(socket: Socket, server: Server, room: GameRoom, data: any) {
-    const ip = getClientIp(socket);
     const clientId = getClientId(socket);
     this.gameService.ensureActiveHost(room);
 
@@ -105,7 +110,7 @@ export class HostActionHandler {
     if (!targetId) return;
 
     const target = Object.values(room.players).find(
-      (p) => p && (p.id === targetId || p.ip === targetId || p.socketId === targetId),
+      (p) => p && (p.publicId === targetId || p.id === targetId || p.ip === targetId || p.socketId === targetId),
     );
 
     if (!target) {

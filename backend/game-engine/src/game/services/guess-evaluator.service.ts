@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { GameRoom } from '../game.types';
 import { RoundCoordinatorService } from './round-coordinator.service';
 import { TimerService } from './timer.service';
+import { toPublicPlayerId } from '../factories/lobby.factory';
 
 @Injectable()
 export class GuessEvaluatorService {
@@ -45,7 +46,7 @@ export class GuessEvaluatorService {
     const guessedCount = activePlayers.filter((p) => p.hasGuessed).length;
 
     const players = activePlayers.map((p) => ({
-      id: p.id || p.ip,
+      id: p.publicId || toPublicPlayerId(p.id || p.ip),
       username: p.username,
       ip: p.ip,
       totalScore: p.totalScore || 0,
@@ -56,7 +57,7 @@ export class GuessEvaluatorService {
 
     server.to(room.id).emit('player_guessed', {
       username: player.username,
-      playerId: player.id || player.ip,
+      playerId: player.publicId || toPublicPlayerId(player.id || player.ip),
       guessedCount,
       totalPlayers: activePlayers.length,
       players,

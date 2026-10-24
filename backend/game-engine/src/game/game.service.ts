@@ -44,7 +44,32 @@ export class GameService {
   }
 
   deleteRoom(id: string) {
+    const room = this.getRoom(id);
+    if (room?.crownElection) {
+      if (room.crownElection.hostTimeout) clearTimeout(room.crownElection.hostTimeout);
+      if (room.crownElection.votingTimeout) clearTimeout(room.crownElection.votingTimeout);
+      room.crownElection = null;
+    }
     this.roomStore.deleteRoom(id);
+  }
+
+  transferHost(room: GameRoom, newHostPlayer: Player, server: Server, previousHostIp?: string) {
+    const prevHostName = room.hostName || 'Host';
+    const prevHostIp = previousHostIp || room.hostIp;
+    room.hostIp = newHostPlayer.ip;
+    room.hostId = newHostPlayer.id;
+    room.hostSocketId = newHostPlayer.socketId;
+    room.hostName = newHostPlayer.username;
+
+    const payload = {
+      previousHost: prevHostName,
+      previousHostIp: prevHostIp,
+      newHost: newHostPlayer.username,
+      newHostIp: newHostPlayer.ip,
+      newHostId: newHostPlayer.publicId || newHostPlayer.id,
+    };
+    server.to(room.id).emit('host_transferred', payload);
+    this.broadcastLobbyUpdate(server, room);
   }
 
   async startGame(
@@ -67,8 +92,7 @@ export class GameService {
     const isAuthorized =
       (targetRoom.hostId && senderId === targetRoom.hostId) ||
       (targetRoom.hostSocketId && senderId === targetRoom.hostSocketId) ||
-      (targetRoom.hostIp && senderIp && senderIp === targetRoom.hostIp) ||
-      (targetRoom.hostIp && senderId === targetRoom.hostIp);
+      (!targetRoom.hostId && targetRoom.hostIp && (senderIp === targetRoom.hostIp || senderId === targetRoom.hostIp));
 
     if (!isAuthorized) {
       return { success: false, error: 'Only the host (Squad Leader) can start the game.' };
@@ -79,22 +103,44 @@ export class GameService {
       difficulty: targetRoom.difficulty,
     });
     if (!pool || pool.length < targetRoom.totalRounds) {
-      pool = this.geoDb.getAllInMemoryLocations();
+      pool = await this.geoDb.getLocations({ region: targetRoom.selectedRegion });
+    }
+    if (!pool || pool.length < targetRoom.totalRounds) {
+      pool = await this.geoDb.getLocations({});
+    }
+
+    if (!targetRoom.recentLocationKeys) {
+      targetRoom.recentLocationKeys = new Set<string>();
     }
 
     targetRoom.selectedLocations = this.roundCoordinator.selectDiverseLocations(
       pool,
       targetRoom.totalRounds,
+      targetRoom.recentLocationKeys,
+      { region: targetRoom.selectedRegion, difficulty: targetRoom.difficulty },
     );
+
+    if (targetRoom.selectedLocations.length === 0) {
+      return { success: false, error: 'No locations available to start the match.' };
+    }
+    if (targetRoom.selectedLocations.length < targetRoom.totalRounds) {
+      targetRoom.totalRounds = targetRoom.selectedLocations.length;
+    }
 
     for (const p of Object.values(targetRoom.players)) {
       p.totalScore = 0;
       p.inGame = true;
     }
 
-    await this.roundCoordinator.startRound(1, server, targetRoom);
-    server.emit('lobbies_list', this.getLobbiesList());
-    return { success: true };
+    try {
+      await this.roundCoordinator.startRound(1, server, targetRoom);
+      server.emit('lobbies_list', this.getLobbiesList());
+      return { success: true };
+    } catch (err: any) {
+      this.logger.error(`Failed to start round 1 for room ${targetRoom.id}: ${err?.message || err}`);
+      targetRoom.status = 'LOBBY';
+      return { success: false, error: 'Failed to initialize round locations.' };
+    }
   }
 
   stopGame(
@@ -109,8 +155,7 @@ export class GameService {
     const isAuthorized =
       (targetRoom.hostId && senderId === targetRoom.hostId) ||
       (targetRoom.hostSocketId && senderId === targetRoom.hostSocketId) ||
-      (targetRoom.hostIp && senderIp && senderIp === targetRoom.hostIp) ||
-      (targetRoom.hostIp && senderId === targetRoom.hostIp);
+      (!targetRoom.hostId && targetRoom.hostIp && (senderIp === targetRoom.hostIp || senderId === targetRoom.hostIp));
 
     if (!isAuthorized) {
       return { success: false, error: 'Only the host (Squad Leader) can stop the game.' };
@@ -153,6 +198,8 @@ export class GameService {
     this.ensureActiveHost(targetRoom);
     server.to(targetRoom.id).emit('lobby_update', {
       roomId: targetRoom.id,
+      code: targetRoom.code || targetRoom.id,
+      isPrivate: Boolean(targetRoom.isPrivate),
       roomName: targetRoom.name,
       players: this.getLobbyPlayers(targetRoom),
       hostIp: targetRoom.hostIp,
@@ -176,6 +223,11 @@ export class GameService {
     const room = this.getRoom(roomId);
     if (!room) return;
     this.timerService.clearCountdown(room);
+    if (room.crownElection) {
+      if (room.crownElection.hostTimeout) clearTimeout(room.crownElection.hostTimeout);
+      if (room.crownElection.votingTimeout) clearTimeout(room.crownElection.votingTimeout);
+      room.crownElection = null;
+    }
     for (const pending of Object.values(room.pendingAdmissions || {})) {
       if (pending?.socketId) {
         server.to(pending.socketId).emit('admission_rejected', { roomId, message: reason });

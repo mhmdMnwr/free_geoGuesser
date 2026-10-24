@@ -14,7 +14,7 @@ const io = socketIo.io || socketIo;
 const http = require('http');
 
 const SERVER_URL = 'http://localhost:5000';
-const CLUSTER_SECRET = 'lan_guessr_cluster_secret_e9f3b8a1';
+const CLUSTER_SECRET = process.env.INTERNAL_CLUSTER_SECRET || 'guessiha_cluster_secret_e9f3b8a1';
 
 function log(test, msg, success = true) {
   const icon = success ? '✅' : '❌';
