@@ -5,7 +5,7 @@ import { StreetviewCipherService } from './streetview-cipher.service';
 import { StreetviewTemplateService } from './streetview-template.service';
 import { RedisService } from '../redis/redis.service';
 
-const GOOGLE_API_KEY = 'AIzaSyCmL18misQw9KdwqGaw3zHkitj8vG6QF2Y';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 
 // Guaranteed verified Algerian 360° panoramas
 const GUARANTEED_ALGERIA_PANOS: Array<{ lat: number; lng: number }> = [
@@ -116,6 +116,9 @@ export class StreetViewController {
   }
 
   private fetchMetadata(lat: number, lng: number, radius: number): Promise<{ lat: number; lng: number } | null> {
+    if (!GOOGLE_API_KEY) {
+      return Promise.resolve(null);
+    }
     return new Promise((resolve) => {
       const url = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${lat},${lng}&radius=${radius}&key=${GOOGLE_API_KEY}`;
       const req = https.get(url, { timeout: 2500 }, (res) => {
