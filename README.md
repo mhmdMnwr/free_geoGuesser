@@ -109,6 +109,31 @@ Guessiha is built as a distributed, event-driven microservices ecosystem orchest
 
 ---
 
+## 🚀 Quick Start / Cloud Deployment
+
+Deploy Guessiha on any Linux server, VPS (AWS EC2, Lightsail, Hetzner, Oracle), or local machine using Docker:
+
+### 1. Clone & Configure
+```bash
+git clone https://github.com/mhmdMnwr/free_local_geoguesser.git
+cd free_local_geoguesser
+cp .env.example .env
+```
+
+*(Edit `.env` to set your desired passwords and secrets, or use defaults for local play).*
+
+### 2. Launch Services
+```bash
+docker compose up -d
+```
+
+### 3. Play
+Open your browser and navigate to:
+- **Production / Cloud**: `http://YOUR_SERVER_IP/`
+- **Local Development**: `http://localhost:3000/`
+
+---
+
 ## 👨‍💻 Creator & Developer
 
 Created and maintained by **Mohammed Menouer Ameur**.
